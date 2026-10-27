@@ -1,12 +1,9 @@
-import { seedBoed } from "./boed-seed";
 import { seedAdmin } from "./admin-seed";
-import { seedDemoSuitStock } from "./demo-suit-seed";
 
-// Prisma's default seed imports the BOED catalog without the removed demo seeds.
+// Only seed the admin for now. Catalog and demo-stock seeds remain available
+// separately but are intentionally disconnected from Prisma's default seed.
 async function main() {
-  await seedBoed({ apply: true });
   await seedAdmin();
-  await seedDemoSuitStock();
 }
 
 main().catch(error => {

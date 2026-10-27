@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { catalogUrl, type StorefrontCatalogData } from "@/lib/storefront-catalog";
 import { ProductCard } from "./EditorialCard";
+import { CatalogFilterClose, CatalogFilterDrawer } from "./CatalogFilterDrawer";
 
 export function EditorialCatalog({ data }: { data: StorefrontCatalogData }) {
   const { products, filters, facets, pagination } = data;
@@ -11,6 +12,7 @@ export function EditorialCatalog({ data }: { data: StorefrontCatalogData }) {
       <nav className="editorial-category-tabs" aria-label="Collections"><Link href="/ecommerce/products" aria-current={!filters.category ? "page" : undefined}>ALL PIECES</Link>{["Suits", "Jackets", "Shirts", "Trousers", "Knitwear", "Shoes", "Accessories", "Ladies Wear"].map(name => <Link key={name} aria-current={filters.category === name.toLowerCase().replaceAll(" ", "-") ? "page" : undefined} href={`/ecommerce/collections/${name.toLowerCase().replaceAll(" ", "-")}`}>{name.toUpperCase()}</Link>)}</nav>
     </div>
     <div className="editorial-catalog-body">
+      <CatalogFilterDrawer>
       <form action="/ecommerce/products" className="editorial-filters">
         <label>SEARCH<input name="q" type="search" defaultValue={filters.q} placeholder="Search pieces" /></label>
         <label>COLLECTION<select name="category" defaultValue={filters.category}><option value="">All collections</option>{facets.categories.filter(category => category.productCount > 0).map(category => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></label>
@@ -24,8 +26,9 @@ export function EditorialCatalog({ data }: { data: StorefrontCatalogData }) {
         {facets.specificationGroups.map(group => <label key={group.key}>{group.label.toUpperCase()}<select name={`spec_${group.key}`} multiple defaultValue={filters.specifications[group.key] || []}>{group.values.map(value => <option key={value.value} value={value.value}>{value.value} ({value.productCount})</option>)}</select></label>)}
         <label><span><input type="checkbox" name="inStock" value="1" defaultChecked={filters.inStock} /> In stock only</span></label>
         <label><span><input type="checkbox" name="featured" value="1" defaultChecked={filters.featured} /> Featured pieces</span></label>
-        <button type="submit">APPLY FILTERS</button><Link href="/ecommerce/products">Clear filters</Link>
+        <div className="editorial-filter-actions"><button type="submit">APPLY FILTERS</button><CatalogFilterClose asChild><Link href="/ecommerce/products">Clear filters</Link></CatalogFilterClose></div>
       </form>
+      </CatalogFilterDrawer>
       <div><div className="editorial-results-bar"><span>{pagination.total} pieces</span><span>Page {pagination.page} of {pagination.totalPages}</span></div>
         {products.length ? <div className="editorial-grid">{products.map(product => <ProductCard key={product.id} product={product} />)}</div> : <div className="editorial-empty"><h2>No pieces found.</h2><p>Try another collection or adjust your filters.</p></div>}
         <nav className="editorial-pagination" aria-label="Pagination">{pagination.page > 1 ? <Link href={catalogUrl(filters, { page: pagination.page - 1 })}>← Previous</Link> : null}{pagination.page < pagination.totalPages ? <Link href={catalogUrl(filters, { page: pagination.page + 1 })}>Next →</Link> : null}</nav>
