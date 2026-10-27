@@ -1,3 +1,5 @@
+import { EditorialPurchase } from "@/components/ecommarce/fashion/EditorialPurchase";
+import { ProductCard as EditorialCard } from "@/components/ecommarce/fashion/EditorialCard";
 import ServerRichText from "@/components/ecommarce/product-detail/ServerRichText";
 import { cache } from "react";
 import type { Metadata } from "next";
@@ -192,6 +194,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
       itemCondition: "https://schema.org/NewCondition",
     },
   };
+
+  if (product.type === "PHYSICAL") return <main>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(productJsonLd) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }} />
+    <EditorialPurchase product={purchaseProduct} category={product.category.name} description={<ServerRichText content={product.description || product.shortDesc || ""} />} />
+    <div className="editorial-product-information">
+      <ProductDetailTabs productId={product.id} description={product.description || product.shortDesc || ""} descriptionContent={<ServerRichText content={product.description || product.shortDesc || ""} />} attributes={product.attributes} variantOptions={product.variantOptions} specificationGroups={product.specificationGroups} information={productInformation} reviewCount={product.ratingCount} />
+      <section className="border-t border-stone-200 py-8"><ProductQuestions productId={product.id} /></section>
+    </div>
+    <div className="editorial-recommendations"><h2>You may also like</h2><div className="editorial-grid">{relatedProducts.slice(0, 4).map(item => <EditorialCard key={item.id} product={item} />)}</div></div>
+  </main>;
 
   return (
     <div className="min-h-screen bg-background text-foreground">

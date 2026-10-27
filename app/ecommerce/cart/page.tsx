@@ -2,7 +2,7 @@ import CartPage from "./ShoppingCart";
 
 const Page = () => {
   return (
-    <div>
+    <div className="editorial-cart">
       <CartPage />
     </div>
   );

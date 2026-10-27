@@ -2,6 +2,7 @@
 import { useStorefrontSettings } from "@/providers/storefront-settings-provider";
 import { ecommerceFromRows } from "@/lib/analytics/ecommerce";
 import { trackAddToCart, trackRemoveFromCart } from "@/lib/analytics/data-layer";
+import { formatVariantOptionLabel } from "@/lib/product-variants";
 
 import {
   createContext,
@@ -269,12 +270,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
               : null;
           const hasVariants =
             product.type !== "BUNDLE" && (product.variants?.length ?? 0) > 0;
-          const variantLabel =
-            variant?.options && Object.keys(variant.options).length > 0
-              ? Object.entries(variant.options)
-                  .map(([key, value]) => `${key}: ${String(value)}`)
-                  .join(", ")
-              : variant?.sku ?? null;
+          const variantLabel = formatVariantOptionLabel(variant?.options);
 
           return [
             ...prev,
@@ -375,12 +371,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           : requestedVariant;
       const hasVariants =
         product.type !== "BUNDLE" && (product.variants?.length ?? 0) > 0;
-      const variantLabel =
-        variant?.options && Object.keys(variant.options).length > 0
-          ? Object.entries(variant.options)
-              .map(([key, value]) => `${key}: ${String(value)}`)
-              .join(", ")
-          : variant?.sku ?? null;
+      const variantLabel = formatVariantOptionLabel(variant?.options);
 
       const fromPcBuilder =
         options?.pcBuilder ??

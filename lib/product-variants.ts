@@ -8,6 +8,15 @@ export type VariantMediaMeta = {
   gallery?: string[];
 };
 
+export function formatVariantOptionLabel(options: unknown): string | null {
+  if (!options || typeof options !== "object" || Array.isArray(options)) return null;
+  const label = Object.entries(options)
+    .filter(([key, value]) => key !== "__meta" && (typeof value === "string" || typeof value === "number"))
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(", ");
+  return label || null;
+}
+
 export function normalizeVariantOptions(input: unknown): VariantOptionInput[] {
   if (!Array.isArray(input)) return [];
 
