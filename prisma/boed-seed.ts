@@ -2,6 +2,7 @@ import { loadEnvConfig } from "@next/env";
 import { readFile, access, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { normalizeBoedCatalog } from "../scripts/boed-catalog.mjs";
+import type { Prisma } from "../generated/prisma";
 
 export async function seedBoed(options: { apply?: boolean; export?: boolean } = {}) {
   loadEnvConfig(process.cwd());
@@ -22,10 +23,13 @@ export async function seedBoed(options: { apply?: boolean; export?: boolean } = 
   if (!options.apply) { console.log("Validation only. Use --apply to insert missing BOED records."); return; }
   const { PrismaClient } = await import("../generated/prisma/index.js");
   const db = new PrismaClient();
-  let created = 0; let skipped = 0;
+  let created = 0; let skipped = 0; let stockRestored = 0;
   try {
-    // Preflight all collisions before inserting anything. Existing records are never overwritten.
-    const existing = await db.product.findMany({ where: { OR: [{ slug: { in: catalog.map(item => item.product.slug) } }, { sku: { in: catalog.map(item => item.product.sku) } }] }, select: { slug: true, sku: true } });
+    // Check identity collisions before inserts or the one-time legacy stock repair.
+    const existing = await db.product.findMany({ where: { OR: [{ slug: { in: catalog.map(item => item.product.slug) } }, { sku: { in: catalog.map(item => item.product.sku) } }] }, select: {
+      slug: true, sku: true,
+      variants: { select: { id: true, stock: true, active: true, options: true, _count: { select: { stockLevels: true, orderItems: true, inventoryLogs: true } } } },
+    } });
     const bySlug = new Map(existing.map(item => [item.slug, item]));
     for (const item of catalog) {
       const collision = bySlug.get(item.product.slug);
@@ -33,7 +37,24 @@ export async function seedBoed(options: { apply?: boolean; export?: boolean } = 
       if (existing.some(row => row.sku === item.product.sku && row.slug !== item.product.slug)) throw new Error(`SKU collision: ${item.product.sku}`);
     }
     for (const item of catalog) {
-      if (bySlug.has(item.product.slug)) { skipped++; continue; }
+      const imported = bySlug.get(item.product.slug);
+      if (imported) {
+        // Repair the old importer's zero-stock defaults once. Never restock a
+        // product that has since been managed, reserved, sold or split into sizes.
+        const variant = imported.variants.length === 1 ? imported.variants[0] : null;
+        const options = (variant?.options && typeof variant.options === "object" && !Array.isArray(variant.options) ? variant.options : {}) as Prisma.JsonObject;
+        const metadata = (options.__meta && typeof options.__meta === "object" && !Array.isArray(options.__meta) ? options.__meta : {}) as Prisma.JsonObject;
+        const sourceStock = item.variants.length === 1 ? item.variants[0].stock : 0;
+        if (variant?.active && variant.stock === 0 && sourceStock > 0 && metadata.sourceId === item.review.sourceId && !metadata.sourceStockInitialized && !metadata.demoStockSeeded && !variant._count.stockLevels && !variant._count.orderItems && !variant._count.inventoryLogs) {
+          const repaired = await db.productVariant.updateMany({
+            where: { id: variant.id, stock: 0, active: true, options: { equals: variant.options as Prisma.InputJsonValue }, stockLevels: { none: {} }, orderItems: { none: {} }, inventoryLogs: { none: {} } },
+            data: { stock: sourceStock, options: { ...options, __meta: { ...metadata, estimatedStock: item.review.estimatedStock, sourceStockInitialized: true } } },
+          });
+          stockRestored += repaired.count;
+        }
+        skipped++;
+        continue;
+      }
       await db.$transaction(async tx => {
         let parentId: number | null = null;
         for (const category of item.categories) {
@@ -53,6 +74,6 @@ export async function seedBoed(options: { apply?: boolean; export?: boolean } = 
       });
       created++;
     }
-    console.log(`BOED import complete: ${created} created, ${skipped} already present.`);
+    console.log(`BOED import complete: ${created} created, ${skipped} already present, ${stockRestored} legacy stock quantities restored from JSON.`);
   } finally { await db.$disconnect(); }
 }

@@ -16,9 +16,11 @@ test("all BOED products map to unique database identities and existing local ass
     assert.equal(row.variants.filter(variant => variant.isDefault).length, 1);
   }
 });
-test("estimates and candidate sizes never become sellable stock or verified variants", () => {
+test("explicit source stock imports without treating candidate sizes as verified variants", () => {
   for (const row of normalizeBoedCatalog(source)) {
-    assert.ok(row.variants.every(variant => variant.stock === 0));
+    const item = source.products.find(product => product.slug === row.product.slug);
+    assert.equal(row.variants[0].stock, item.stock);
+    assert.equal(row.variants[0].options.__meta.sourceStockInitialized, true);
     assert.deepEqual(row.verifiedSizes, []);
     assert.equal(row.variants[0].options.__meta.requiresPriceVerification, true);
     assert.ok(Array.isArray(row.variants[0].options.__meta.candidateSizes));

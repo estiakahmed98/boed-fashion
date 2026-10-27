@@ -21,13 +21,13 @@ Homepage campaign images are read from active, currently scheduled Banner Manage
 | verified sizes | ProductVariant and ProductVariantOption/Value |
 | review flags, source URL, candidate sizes, estimated stock | variant options `__meta`, retained for review |
 
-All 338 supplied rows have unverified stock and sizes. The catalog importer keeps their sellable stock at zero. The default seed also initializes the specifically requested `blue-double-breasted-suit-made-in-italy` with 48 demo units from the source JSON, once only, to demonstrate Add to Cart. Existing inventory and warehouse stock are preserved on repeat runs. Candidate sizes are not actual variants. Prices remain estimates and the physical product page displays a review notice while the variant metadata requires verification. Verify prices, images, descriptions, sizes and real inventory in the existing admin before enabling sale. Existing products and categories are never overwritten by the catalog importer; unrelated slug/SKU/hierarchy collisions stop the import. Each new product and its category/variant records are inserted transactionally.
+The catalog importer uses each product's explicit JSON `stock` for its single default variant. Price/size/source review flags remain metadata and no longer silently force stock to zero. Candidate sizes are not actual variants; products with multiple verified sizes still need per-size quantities. Existing unmodified BOED rows left at zero by the old importer receive a one-time stock repair from JSON, marked by `sourceStockInitialized`. Rows with warehouse stock, inventory logs, order history, multiple variants or previously initialized stock are preserved. Normal repeat runs do not replenish sold or manually adjusted inventory. Unrelated slug/SKU/hierarchy collisions stop the import. Each new product and its category/variant records are inserted transactionally.
 
 ```powershell
 npx prisma db seed             # default seed: imports missing BOED products
 npm run seed:admin             # seeds the requested admin account
 npm run seed:boed -- --export   # validates every asset; exports mapping under .git
-npm run seed:boed -- --apply    # inserts missing records into DATABASE_URL
+npm run seed:boed -- --apply    # imports missing records and repairs untouched legacy zero-stock rows
 npm run test:boed
 ```
 

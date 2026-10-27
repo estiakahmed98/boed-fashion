@@ -12,6 +12,7 @@ export type BoedReview = {
   needsReview: boolean;
   candidateSizes: string[];
   estimatedStock: number;
+  sourceStockInitialized?: boolean;
 };
 export type NormalizedBoedProduct = {
   categories: Array<{ name: string; slug: string }>;

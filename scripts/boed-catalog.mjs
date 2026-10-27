@@ -25,8 +25,10 @@ export function normalizeBoedCatalog(source) {
     const gallery = [...new Set([item.image, ...(item.images || [])].filter(Boolean).map(boedMediaPath))];
     const sku = `BOED-${createHash("sha256").update(item.slug).digest("hex").slice(0, 16).toUpperCase()}`;
     const verifiedSizes = item.requiresSizeVerification ? [] : [...new Set((item.sizes || []).filter(value => typeof value === "string" && value.trim()))];
-    // Aggregate stock cannot be distributed across sizes without per-size evidence.
-    const stock = item.requiresStockVerification || item.requiresPriceVerification || item.requiresSizeVerification || item.needsReview || verifiedSizes.length > 1 ? 0 : item.stock;
+    // The explicitly supplied JSON quantity belongs to the default variant.
+    // Review flags describe source quality; they must not silently zero inventory.
+    // Multiple verified sizes still need explicit per-size quantities.
+    const stock = verifiedSizes.length > 1 ? 0 : item.stock;
     const metadata = {
       sourceId: item.id, sourceUrl: item.sourceUrl, sourceCategory: item.category,
       priceSource: item.priceSource, stockSource: item.stockSource,
@@ -37,6 +39,7 @@ export function normalizeBoedCatalog(source) {
       requiresDescriptionReview: Boolean(item.requiresDescriptionReview),
       needsReview: Boolean(item.needsReview), candidateSizes: item.candidateSizes || [],
       estimatedStock: item.stock,
+      sourceStockInitialized: true,
     };
     return {
       categories: categories.map(name => ({ name, slug: categorySlug(name) })),

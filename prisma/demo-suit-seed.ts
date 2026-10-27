@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { PrismaClient, type Prisma } from "../generated/prisma";
 
-// Explicitly requested cart demonstration; other unverified products stay at zero stock.
+// Legacy one-product demo setup; the catalog importer now reads JSON quantities.
 export async function seedDemoSuitStock() {
   loadEnvConfig(process.cwd());
   const slug = "blue-double-breasted-suit-made-in-italy";
@@ -17,7 +17,7 @@ export async function seedDemoSuitStock() {
     if (!product?.sku?.startsWith("BOED-") || !variant) throw new Error("Import the BOED catalog before seeding the demo suit.");
     const options = (variant.options && typeof variant.options === "object" && !Array.isArray(variant.options) ? variant.options : {}) as Prisma.JsonObject;
     const metadata = (options.__meta && typeof options.__meta === "object" && !Array.isArray(options.__meta) ? options.__meta : {}) as Prisma.JsonObject;
-    if (metadata.demoStockSeeded || variant.stock > 0 || variant.stockLevels.length) {
+    if (metadata.sourceStockInitialized || metadata.demoStockSeeded || variant.stock > 0 || variant.stockLevels.length) {
       console.log("Demo suit stock already configured; existing inventory preserved.");
       return;
     }
