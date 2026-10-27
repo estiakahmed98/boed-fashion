@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Bookmark, ChevronDown, Menu, Search, ShoppingBag, UserRound, X, ArrowRight } from "lucide-react";
+import { Bookmark, ChevronDown, LogOut, Menu, Search, ShoppingBag, UserRound, X, ArrowRight } from "lucide-react";
 import { useCart } from "@/components/ecommarce/CartContext";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { signOut, useSession } from "@/lib/auth-client";
 
 export type MenuProduct = { id: number; slug: string; name: string; image: string | null };
 type MenuName = "Clothing" | "Shoes" | "Accessories" | "Gifts";
@@ -17,6 +19,7 @@ const menus: Record<MenuName, { title: string; links: Array<[string, string]>; i
 
 export function EditorialHeader({ highlights, onOpenBag }: { highlights: MenuProduct[]; onOpenBag: () => void }) {
   const { cartCount } = useCart();
+  const { data: session } = useSession();
   const [activeMenu, setActiveMenu] = useState<MenuName | null>(null);
   const [displayMenu, setDisplayMenu] = useState<MenuName>("Clothing");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -40,7 +43,47 @@ export function EditorialHeader({ highlights, onOpenBag }: { highlights: MenuPro
         <span className="editorial-header-divider" aria-hidden="true" />
         <span className="editorial-header-language">EN <ChevronDown size={10} /></span>
         <Link href="/ecommerce/contact" className="editorial-stores-link" onClick={close}>Our stores</Link>
-        <Link href="/ecommerce/user" aria-label="My account" onClick={close}><span className="editorial-action-label">Account</span><UserRound className="editorial-action-icon" size={18} /></Link>
+        {session?.user ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="editorial-account-trigger" aria-label="Account menu">
+                {session.user.image ? (
+                  <img className="editorial-account-avatar" src={session.user.image} alt="" />
+                ) : (
+                  <span className="editorial-account-avatar editorial-account-avatar-fallback" aria-hidden="true">
+                    {session.user.name?.trim().charAt(0).toUpperCase() || <UserRound size={16} />}
+                  </span>
+                )}
+                <span className="editorial-action-label">Account</span>
+                <ChevronDown className="editorial-action-icon" size={14} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={12} className="z-[10001] w-48">
+              <DropdownMenuItem asChild>
+                <Link href="/ecommerce/user/profile" className="flex items-center gap-2">
+                  <UserRound size={16} />
+                  Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => {
+                  void signOut({ callbackUrl: "/" }).catch(error => {
+                    console.error("Error signing out:", error);
+                  });
+                }}
+              >
+                <LogOut size={16} />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Link href="/signin" aria-label="Login to your account" onClick={close}>
+            <span className="editorial-action-label">Account</span>
+            <UserRound className="editorial-action-icon" size={18} />
+          </Link>
+        )}
         <button type="button" className="editorial-cart-trigger" aria-label={`Shopping bag, ${cartCount} items`} onClick={() => { close(); onOpenBag(); }}><span className="editorial-action-label">Cart</span><ShoppingBag className="editorial-action-icon" size={19} /><span className="editorial-cart-count">{cartCount}</span></button>
       </div>
       <div id="editorial-mega-menu" className="editorial-mega-panel" data-open={Boolean(activeMenu)} inert={!activeMenu} aria-hidden={!activeMenu} aria-label={`${displayMenu} menu`}>
