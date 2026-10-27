@@ -8,7 +8,7 @@ export function EditorialCatalog({ data }: { data: StorefrontCatalogData }) {
   const title = filters.q ? `Results for “${filters.q}”` : selected?.name || "The collection";
   return <main className="editorial-catalog">
     <div className="editorial-catalog-heading"><span className="editorial-kicker">THE AURA BOED WARDROBE</span><h1>{title}</h1><p>Considered pieces. Distinctive details. Find your everyday refinement.</p>
-      <nav className="editorial-category-tabs" aria-label="Collections"><Link href="/ecommerce/products" aria-current={!filters.category ? "page" : undefined}>ALL PIECES</Link>{["Suits", "Jackets", "Shirts", "Trousers", "Knitwear", "Shoes", "Accessories"].map(name => <Link key={name} aria-current={filters.category === name.toLowerCase() ? "page" : undefined} href={`/ecommerce/collections/${name.toLowerCase()}`}>{name.toUpperCase()}</Link>)}</nav>
+      <nav className="editorial-category-tabs" aria-label="Collections"><Link href="/ecommerce/products" aria-current={!filters.category ? "page" : undefined}>ALL PIECES</Link>{["Suits", "Jackets", "Shirts", "Trousers", "Knitwear", "Shoes", "Accessories", "Ladies Wear"].map(name => <Link key={name} aria-current={filters.category === name.toLowerCase().replaceAll(" ", "-") ? "page" : undefined} href={`/ecommerce/collections/${name.toLowerCase().replaceAll(" ", "-")}`}>{name.toUpperCase()}</Link>)}</nav>
     </div>
     <div className="editorial-catalog-body">
       <form action="/ecommerce/products" className="editorial-filters">

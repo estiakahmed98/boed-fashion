@@ -1,8 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 
 const collections: Record<string, string> = {
-  suits: "suits", jackets: "jackets", shirts: "shirts", trousers: "trousers",
-  knitwear: "knitwear", shoes: "shoes", accessories: "accessories", summer: "swimwear",
+  clothing: "clothing", suits: "suits", jackets: "jackets", shirts: "shirts", trousers: "trousers",
+  knitwear: "knitwear", shoes: "shoes", accessories: "accessories", gifts: "accessories",
+  "ladies-wear": "ladies-wear", summer: "swimwear",
   all: "", "new-arrivals": "",
 };
 export default async function CollectionPage({ params }: { params: Promise<{ slug: string }> }) {

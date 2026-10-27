@@ -9,10 +9,10 @@ export type MenuProduct = { id: number; slug: string; name: string; image: strin
 type MenuName = "Clothing" | "Shoes" | "Accessories" | "Gifts";
 const collection = (slug: string) => `/ecommerce/products?category=${slug}`;
 const menus: Record<MenuName, { title: string; links: Array<[string, string]>; image: string; headline: string; cta: string; href: string }> = {
-  Clothing: { title: "CLOTHING", links: [["Suits", "suits"], ["Jackets", "jackets"], ["Trousers", "trousers"], ["Knitwear", "knitwear"], ["Classic Shirts", "classic-shirts"], ["Casual Shirts", "casual-shirts"], ["Outerwear", "outerwear"], ["Waistcoats", "waistcoats"]], image: "/editorial/suits.webp", headline: "Tailoring, Reimagined", cta: "Explore suits", href: collection("suits") },
+  Clothing: { title: "CLOTHING", links: [["Suits", "suits"], ["Jackets", "jackets"], ["Trousers", "trousers"], ["Knitwear", "knitwear"], ["Classic Shirts", "classic-shirts"], ["Casual Shirts", "casual-shirts"], ["Outerwear", "outerwear"], ["Waistcoats", "waistcoats"]], image: "/editorial/suits.webp", headline: "Tailoring, Reimagined", cta: "Explore suits", href: collection("clothing") },
   Shoes: { title: "FOOTWEAR", links: [["Loafers", "shoes"], ["Classic Shoes", "shoes"], ["Leather Essentials", "shoes"]], image: "/editorial/shoes.webp", headline: "The Finishing Touch", cta: "Discover shoes", href: collection("shoes") },
   Accessories: { title: "ACCESSORIES", links: [["Ties", "ties"], ["Pocket Squares", "pocket-squares"], ["Socks", "socks"], ["Leather Goods", "leather-goods"], ["Sunglasses", "sunglasses"], ["Cufflinks", "cufflinks"]], image: "/editorial/accessories.webp", headline: "Small Details. Lasting Style.", cta: "Explore accessories", href: collection("accessories") },
-  Gifts: { title: "THE GIFT EDIT", links: [["Thoughtful Details", "accessories"], ["Ties & Pocket Squares", "ties"], ["Everyday Essentials", "knitwear"]], image: "/editorial/knitwear.webp", headline: "Something Considered", cta: "Discover the gift edit", href: collection("accessories") },
+  Gifts: { title: "THE GIFT EDIT", links: [["Thoughtful Details", "accessories"], ["Ties & Pocket Squares", "ties"], ["Everyday Essentials", "knitwear"]], image: "/editorial/knitwear.webp", headline: "Something Considered", cta: "Discover the gift edit", href: collection("gifts") },
 };
 
 export function EditorialHeader({ highlights, onOpenBag }: { highlights: MenuProduct[]; onOpenBag: () => void }) {
@@ -30,7 +30,7 @@ export function EditorialHeader({ highlights, onOpenBag }: { highlights: MenuPro
       <button className="editorial-mobile-menu" type="button" aria-label={mobileOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileOpen} onClick={() => { setMobileOpen(!mobileOpen); setSearchOpen(false); }}>{mobileOpen ? <X size={20} /> : <Menu size={20} />}</button>
       <nav className="editorial-desktop-nav" aria-label="Main navigation">
         <Link className="editorial-nav-accent" href="/ecommerce/products?sort=newest" onMouseEnter={() => setActiveMenu(null)} onClick={close}>New Arrivals</Link>
-        {(Object.keys(menus) as MenuName[]).map(name => <button key={name} type="button" aria-expanded={activeMenu === name} aria-controls="editorial-mega-menu" onMouseEnter={() => openMenu(name)} onClick={() => { if (activeMenu === name) setActiveMenu(null); else openMenu(name); }}>{name}</button>)}
+        {(Object.keys(menus) as MenuName[]).map(name => <Link key={name} href={menus[name].href} aria-expanded={activeMenu === name} aria-controls="editorial-mega-menu" onMouseEnter={() => openMenu(name)} onClick={close}>{name}</Link>)}
         <Link className="editorial-nav-accent" href="/#our-story" onMouseEnter={() => setActiveMenu(null)} onClick={close}>Our Story</Link>
       </nav>
       <Link href="/" className="editorial-wordmark" aria-label="Aura BOED home" onClick={close}><img src="/AURA_BOED_Logo.svg" alt="Aura BOED" width="118" height="48" /></Link>
@@ -52,6 +52,6 @@ export function EditorialHeader({ highlights, onOpenBag }: { highlights: MenuPro
     </header>
     <button type="button" className="editorial-menu-shade" data-open={Boolean(activeMenu)} tabIndex={activeMenu ? 0 : -1} aria-hidden={!activeMenu} aria-label="Close menu" onClick={close} />
     {searchOpen ? <form action="/ecommerce/products" className="editorial-search" onSubmit={close}><label htmlFor="editorial-search">Find your next favourite</label><div><input autoFocus id="editorial-search" name="q" type="search" placeholder="Search the collection…" required /><button type="submit">Search <Search size={16} /></button><button type="button" aria-label="Close search" onClick={close}><X size={18} /></button></div></form> : null}
-    {mobileOpen ? <nav className="editorial-mobile-nav" aria-label="Mobile navigation"><Link href="/ecommerce/products?sort=newest" onClick={close}>New Arrivals</Link>{["Suits", "Jackets", "Shirts", "Trousers", "Knitwear", "Shoes", "Accessories"].map(label => <Link key={label} href={collection(label.toLowerCase())} onClick={close}>{label}</Link>)}<Link href="/#our-story" onClick={close}>Our Story</Link></nav> : null}
+    {mobileOpen ? <nav className="editorial-mobile-nav" aria-label="Mobile navigation"><Link href="/ecommerce/products?sort=newest" onClick={close}>New Arrivals</Link>{(Object.keys(menus) as MenuName[]).map(name => <Link key={name} href={menus[name].href} onClick={close}>{name}</Link>)}{["Suits", "Jackets", "Shirts", "Trousers", "Knitwear"].map(label => <Link key={label} href={collection(label.toLowerCase())} onClick={close}>{label}</Link>)}<Link href="/#our-story" onClick={close}>Our Story</Link></nav> : null}
   </div>;
 }

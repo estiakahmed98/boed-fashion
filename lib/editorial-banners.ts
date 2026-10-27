@@ -26,8 +26,8 @@ export async function getEditorialBannerImages() {
   const summer = imageFor("BANNER1", 1) || homeImages.summer;
   return {
     hero,
-    heroMobile: imageFor("HERO", 2) || hero,
+    heroMobile: imageFor("HERO", 2) || homeImages.heroMobile,
     summer,
-    summerMobile: imageFor("BANNER1", 2) || summer,
+    summerMobile: imageFor("BANNER1", 2) || homeImages.summerMobile,
   };
 }
