@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { computeWarehouseAvailableStock } from '@/lib/warehouse-stock';
+import { computeVariantAvailableStock } from '@/lib/warehouse-stock';
 import { gateProductType } from '@/lib/store-feature-gates-server';
 import {
   configurableBundleInclude,
@@ -75,7 +75,7 @@ export async function PATCH(
 
     if (cartItem.product.type === 'PHYSICAL') {
       const available = cartItem.variant
-        ? computeWarehouseAvailableStock(cartItem.variant)
+        ? computeVariantAvailableStock(cartItem.variant)
         : null;
       if (available === null) {
         return NextResponse.json(

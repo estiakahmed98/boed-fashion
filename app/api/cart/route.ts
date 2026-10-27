@@ -17,7 +17,7 @@ import { pcBuildSelectionId } from "@/lib/pc-builder-grouping";
 import { replayNextRequest } from "@/lib/replay-next-request";
 import { validatePcBuilderSelectionLive } from "@/lib/storefront-pc-builder";
 import { isFeatureEnabled } from "@/lib/store-features-server";
-import { computeWarehouseAvailableStock } from "@/lib/warehouse-stock";
+import { computeVariantAvailableStock } from "@/lib/warehouse-stock";
 import {
   DELETE as coreDELETE,
   GET as coreGET,
@@ -287,13 +287,14 @@ export async function POST(request: NextRequest) {
           product: { deleted: false, available: true, type: "PHYSICAL" },
         },
         select: {
+          stock: true,
           stockLevels: {
             select: { quantity: true, reserved: true },
           },
         },
       });
       const available = inventoryVariant
-        ? computeWarehouseAvailableStock(inventoryVariant)
+        ? computeVariantAvailableStock(inventoryVariant)
         : null;
       if (available === null || available < 1) {
         throw new Error("PC_BUILDER_WAREHOUSE_STOCK_UNAVAILABLE");

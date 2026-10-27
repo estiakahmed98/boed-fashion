@@ -5,7 +5,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { applyFlashSalePricingToProduct } from '@/lib/flash-sale';
-import { computeWarehouseAvailableStock } from '@/lib/warehouse-stock';
+import { computeVariantAvailableStock } from '@/lib/warehouse-stock';
 import { evaluateCartReminderNotifications } from '@/lib/cart-reminder-notifications';
 import {
   getEffectiveStorefrontCategoryIds,
@@ -50,12 +50,6 @@ async function findConfiguredBundleCartItem(
     lineKey,
   );
   return rows[0]?.id ? prisma.cartItem.findUnique({ where: { id: rows[0].id } }) : null;
-}
-
-function warehouseStockOrUnavailable(variant: {
-  stockLevels?: Array<{ quantity: number; reserved: number }> | null;
-}) {
-  return computeWarehouseAvailableStock(variant);
 }
 
 // GET cart items - Logged in user only
@@ -306,13 +300,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const availableStock = warehouseStockOrUnavailable(targetVariant);
-    if (product.type === 'PHYSICAL' && availableStock === null) {
-      return NextResponse.json(
-        { error: 'Warehouse inventory is not configured for the selected variant' },
-        { status: 400 }
-      );
-    }
+    const availableStock = computeVariantAvailableStock(targetVariant);
     if (product.type === 'PHYSICAL' && Number(availableStock) < quantity) {
       return NextResponse.json(
         { error: 'Requested quantity exceeds available stock' },

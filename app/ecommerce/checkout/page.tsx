@@ -41,6 +41,10 @@ import {
   purchaseFromOrder,
 } from "@/lib/analytics/ecommerce";
 import { useStorefrontSettings } from "@/providers/storefront-settings-provider";
+import {
+  getStaleServerCartItems,
+  isSameCartLine,
+} from "@/lib/cart-reconciliation";
 
 function clearCompletedPcBuilderDraft() {
   try {
@@ -349,26 +353,43 @@ export default function CheckoutPage() {
         if (serverRes.ok) {
           const serverData = await serverRes.json();
           const existingItems = Array.isArray(serverData.items) ? serverData.items : [];
-
-          const itemsToSync = isLoginRecovery
-            ? localItems
-            : localItems.filter(
-                (localItem) =>
-                  !existingItems.some((serverItem: any) => {
-                    const sameLine =
-                      String(serverItem.productId) === String(localItem.productId) &&
-                      String(serverItem.pcBuildId ?? "") === String(localItem.pcBuildId ?? "") &&
-                      String(serverItem.lineKey ?? "standard") ===
-                        String(localItem.bundleConfigurationKey ?? "standard");
-                    const sameVariant =
-                      String(serverItem.variantId ?? "") === String(localItem.variantId ?? "") ||
-                      (!localItem.variantId && serverItem.variantId != null &&
-                        !localItem.bundleConfigurationKey && !localItem.pcBuildId);
-                    return sameLine && sameVariant;
-                  }),
-              );
-
           const failed: Array<string | number> = [];
+          const staleItems = getStaleServerCartItems(existingItems, localItems);
+          const staleItemsToDelete = staleItems.filter(
+            (item: any, index: number) =>
+              !item.pcBuildId ||
+              staleItems.findIndex(
+                (candidate: any) => candidate.pcBuildId === item.pcBuildId,
+              ) === index,
+          );
+
+          for (const item of staleItemsToDelete) {
+            if (item.id == null) {
+              console.error("Cannot remove stale server cart item without an id:", item);
+              failed.push(item.productId);
+              continue;
+            }
+
+            const response = await fetch(`/api/cart/${encodeURIComponent(String(item.id))}`, {
+              method: "DELETE",
+            });
+            if (requiresSignIn(response)) return;
+            if (!response.ok) {
+              console.error(
+                "Failed to remove stale server cart item:",
+                item.id,
+                response.status,
+              );
+              failed.push(item.productId);
+            }
+          }
+
+          const itemsToSync = localItems.filter((localItem) => {
+            const existingItem = existingItems.find((serverItem: any) =>
+              isSameCartLine(serverItem, localItem),
+            );
+            return !existingItem || !localItem.pcBuildId;
+          });
 
           for (const item of itemsToSync) {
             const res = await fetch("/api/cart", {
@@ -379,7 +400,7 @@ export default function CheckoutPage() {
                 variantId: item.variantId ?? null,
                 quantity: item.quantity,
                 bundleSelections: item.bundleSelections ?? undefined,
-                ...(isLoginRecovery ? { quantityMode: "set" } : {}),
+                quantityMode: "set",
               }),
             });
 
@@ -418,6 +439,8 @@ export default function CheckoutPage() {
               sessionStorage.removeItem("redirectAfterLogin");
             } catch {}
           }
+        } else if (!allSynced) {
+          setServerCartItems(localItems);
         }
       } catch (err) {
         console.error("Error syncing guest cart to server:", err);
