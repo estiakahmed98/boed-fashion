@@ -1,0 +1,676 @@
+import { cache } from "react";
+import CatalogDynamicFilters from "@/components/ecommarce/catalog/CatalogDynamicFilters";
+import { catalogFacetPage } from "@/lib/catalog-facet-page";
+import FilterSection from "@/components/ecommarce/catalog/CatalogFilterSection";
+import type { Metadata } from "next";
+import Link from "@/components/ecommarce/catalog/CatalogLink";
+import { redirect } from "next/navigation";
+import { LoaderCircle, PackageSearch, Search } from "lucide-react";
+import CatalogFilterForm from "@/components/ecommarce/catalog/CatalogFilterForm";
+import CatalogFilterSidebar from "@/components/ecommarce/catalog/CatalogFilterSidebar";
+import CatalogProductGrid from "@/components/ecommarce/catalog/CatalogProductGrid";
+import SearchResultsTelemetry from "@/components/ecommarce/search/SearchResultsTelemetry";
+import {
+  CATALOG_MAX_PRICE,
+  catalogCanonicalUrl,
+  catalogUrl,
+  getStorefrontCatalog,
+  getStorefrontCatalogFacets,
+  isIndexableCatalogView,
+  parseCatalogFilters,
+  type CatalogSearchParams,
+  type CatalogSort,
+} from "@/lib/storefront-catalog";
+import { getSiteSettingsForSeo, getSiteUrl, serializeJsonLd } from "@/lib/seo";
+import { getTranslations } from "next-intl/server";
+
+const getSeoFacets = cache(getStorefrontCatalogFacets);
+
+type ProductsPageProps = {
+  searchParams: Promise<CatalogSearchParams>;
+};
+
+const SORT_OPTIONS: Array<{ value: CatalogSort; labelKey: string }> = [
+  { value: "relevance", labelKey: "sort.relevance" },
+  { value: "newest", labelKey: "sort.newest" },
+  { value: "popular", labelKey: "sort.popular" },
+  { value: "price-asc", labelKey: "sort.priceAsc" },
+  { value: "price-desc", labelKey: "sort.priceDesc" },
+  { value: "name-asc", labelKey: "sort.nameAsc" },
+];
+
+export async function generateMetadata({
+  searchParams,
+}: ProductsPageProps): Promise<Metadata> {
+  const [filters, settings, facets] = await Promise.all([
+    searchParams.then(parseCatalogFilters),
+    getSiteSettingsForSeo(),
+    getSeoFacets(),
+  ]);
+  const t = await getTranslations("StorefrontCatalog.page");
+  const category = facets.categories.find((item) => item.slug === filters.category || String(item.id) === filters.category);
+  const brand = filters.brands.length === 1 ? facets.brands.find((item) => item.slug === filters.brands[0]) : undefined;
+  const normalized = { ...filters, category: category?.slug ?? filters.category };
+  const qualifier = filters.q
+    ? t("metadata.searchResults", { query: filters.q })
+    : filters.category
+      ? t("metadata.categoryProducts", { category: category?.name ?? filters.category.replaceAll("-", " ") })
+      : brand ? t("metadata.categoryProducts", { category: brand.name }) : t("allProducts");
+
+  return {
+    title: { absolute: `${qualifier} — ${settings.siteTitle}` },
+    description:
+      t("metadata.description", { site: category?.name || brand?.name ? `${settings.siteTitle}: ${category?.name ?? brand?.name}` : settings.siteTitle }),
+    alternates: {
+      canonical: catalogCanonicalUrl(normalized),
+    },
+    robots: isIndexableCatalogView(normalized) && (!filters.category || Boolean(category?.productCount)) && (!filters.brands.length || Boolean(brand?.productCount))
+      ? undefined
+      : { index: false, follow: true, googleBot: { index: false, follow: true } },
+  };
+}
+
+function paginationPages(page: number, totalPages: number) {
+  const pages = new Set([1, totalPages, page - 1, page, page + 1]);
+  return Array.from(pages)
+    .filter((value) => value >= 1 && value <= totalPages)
+    .sort((left, right) => left - right);
+}
+
+export default async function ProductsPage({ searchParams }: ProductsPageProps) {
+  const t = await getTranslations("StorefrontCatalog.page");
+  const filtersT = await getTranslations("StorefrontCatalog.filters");
+  const productTypeLabel = (type: string) => {
+    const key = type.toLowerCase();
+    return ["physical", "digital", "service", "bundle"].includes(key)
+      ? t(`productTypes.${key}` as any)
+      : type.charAt(0) + type.slice(1).toLowerCase();
+  };
+  const parsedFilters = parseCatalogFilters(await searchParams);
+  const [data, settings] = await Promise.all([
+    getStorefrontCatalog(parsedFilters),
+    getSiteSettingsForSeo(),
+  ]);
+  const { filters, products, facets, pagination } = data;
+  if (catalogUrl(parsedFilters) !== catalogUrl(filters)) {
+    redirect(catalogUrl(filters));
+  }
+  if (pagination.page > pagination.totalPages) {
+    redirect(catalogUrl(filters, { page: pagination.totalPages }));
+  }
+  const selectedCategory = facets.categories.find(
+    (category) =>
+      category.slug === filters.category ||
+      String(category.id) === filters.category,
+  );
+  const selectedBrandNames = facets.brands
+    .filter((brand) => filters.brands.includes(brand.slug))
+    .map((brand) => brand.name);
+  const activeFilterCount = [
+    Boolean(filters.q),
+    Boolean(filters.category),
+    filters.brands.length > 0,
+    Boolean(filters.type),
+    filters.minPrice !== null || filters.maxPrice !== null,
+    filters.inStock,
+    filters.featured,
+    ...Object.values(filters.attributes).map((values) => values.length > 0),
+    ...Object.values(filters.variants).map((values) => values.length > 0),
+    ...Object.values(filters.specifications).map((values) => values.length > 0),
+  ].filter(Boolean).length;
+  const activeFilterLinks: Array<{ key: string; label: string; href: string }> = [];
+  if (filters.q) {
+    activeFilterLinks.push({
+      key: "search",
+      label: t("active.search", { query: filters.q }),
+      href: catalogUrl(filters, { q: "", page: 1 }),
+    });
+  }
+  if (selectedCategory) {
+    activeFilterLinks.push({
+      key: "category",
+      label: selectedCategory.name,
+      href: catalogUrl(filters, { category: "", page: 1 }),
+    });
+  }
+  for (const brand of facets.brands.filter((item) =>
+    filters.brands.includes(item.slug),
+  )) {
+    activeFilterLinks.push({
+      key: `brand-${brand.slug}`,
+      label: brand.name,
+      href: catalogUrl(filters, {
+        brands: filters.brands.filter((slug) => slug !== brand.slug),
+        page: 1,
+      }),
+    });
+  }
+  if (filters.type) {
+    activeFilterLinks.push({
+      key: "type",
+      label: productTypeLabel(filters.type),
+      href: catalogUrl(filters, { type: "", page: 1 }),
+    });
+  }
+  if (filters.minPrice !== null || filters.maxPrice !== null) {
+    activeFilterLinks.push({
+      key: "price",
+      label: t("active.price", {
+        min: filters.minPrice ?? 0,
+        max: filters.maxPrice ?? t("any"),
+      }),
+      href: catalogUrl(filters, { minPrice: null, maxPrice: null, page: 1 }),
+    });
+  }
+  for (const group of facets.attributes) {
+    for (const value of filters.attributes[String(group.id)] ?? []) {
+      const rest = (filters.attributes[String(group.id)] ?? []).filter(
+        (item) => item !== value,
+      );
+      const nextAttributes = { ...filters.attributes };
+      if (rest.length) {
+        nextAttributes[String(group.id)] = rest;
+      } else {
+        delete nextAttributes[String(group.id)];
+      }
+      activeFilterLinks.push({
+        key: `attr-${group.id}-${value}`,
+        label: `${group.name}: ${value}`,
+        href: catalogUrl(filters, { attributes: nextAttributes, page: 1 }),
+      });
+    }
+  }
+  for (const group of facets.variantOptions) {
+    for (const value of filters.variants[group.name] ?? []) {
+      const rest = (filters.variants[group.name] ?? []).filter(
+        (item) => item !== value,
+      );
+      const nextVariants = { ...filters.variants };
+      if (rest.length) {
+        nextVariants[group.name] = rest;
+      } else {
+        delete nextVariants[group.name];
+      }
+      activeFilterLinks.push({
+        key: `variant-${group.name}-${value}`,
+        label: `${group.name}: ${value}`,
+        href: catalogUrl(filters, { variants: nextVariants, page: 1 }),
+      });
+    }
+  }
+  for (const group of facets.specificationGroups) {
+    for (const value of filters.specifications[group.key] ?? []) {
+      const specifications = { ...filters.specifications };
+      const rest = specifications[group.key].filter((entry) => entry !== value);
+      if (rest.length) specifications[group.key] = rest;
+      else delete specifications[group.key];
+      activeFilterLinks.push({
+        key: `spec-${group.key}-${value}`,
+        label: `${group.group} / ${group.label}: ${value}`,
+        href: catalogUrl(filters, { specifications, page: 1 }),
+      });
+    }
+  }
+  if (filters.inStock) {
+    activeFilterLinks.push({
+      key: "stock",
+      label: t("inStock"),
+      href: catalogUrl(filters, { inStock: false, page: 1 }),
+    });
+  }
+  if (filters.featured) {
+    activeFilterLinks.push({
+      key: "featured",
+      label: t("featured"),
+      href: catalogUrl(filters, { featured: false, page: 1 }),
+    });
+  }
+  const pages = paginationPages(pagination.page, pagination.totalPages);
+  const firstResult = pagination.total
+    ? (pagination.page - 1) * pagination.perPage + 1
+    : 0;
+  const lastResult = Math.min(
+    pagination.page * pagination.perPage,
+    pagination.total,
+  );
+
+  const collectionJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    url: `${getSiteUrl()}${catalogCanonicalUrl(filters)}`,
+    name: selectedCategory?.name ?? selectedBrandNames[0] ?? t("metadata.catalogName", { site: settings.siteTitle }),
+    numberOfItems: pagination.total,
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: products.map((product, index) => ({
+        "@type": "ListItem",
+        position: firstResult + index,
+        url: `${getSiteUrl()}/ecommerce/products/${encodeURIComponent(product.slug)}`,
+        name: product.name,
+      })),
+    },
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(collectionJsonLd) }}
+      />
+      {filters.q ? (
+        <SearchResultsTelemetry
+          query={filters.q}
+          resultCount={pagination.total}
+          filters={{
+            category: filters.category,
+            brands: filters.brands,
+            type: filters.type,
+            minPrice: filters.minPrice,
+            maxPrice: filters.maxPrice,
+            inStock: filters.inStock,
+            featured: filters.featured,
+            attributes: filters.attributes,
+            variants: filters.variants,
+            sort: filters.sort,
+            page: filters.page,
+          }}
+        />
+      ) : null}
+      <div className="container px-3 pb-5 pt-[76px] sm:px-6 lg:py-8">
+        {(selectedCategory || selectedBrandNames.length === 1) ? <nav aria-label="Breadcrumb" className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/">{settings.siteTitle}</Link><span aria-hidden="true">/</span>
+          <Link href="/ecommerce/products">{t("allProducts")}</Link><span aria-hidden="true">/</span>
+          <span>{selectedCategory?.name ?? selectedBrandNames[0]}</span>
+        </nav> : null}
+        <section className="overflow-hidden rounded-3xl border bg-gradient-to-br from-primary/10 via-background to-accent/10 px-5 py-7 sm:px-8 sm:py-10">
+          <div className="max-w-3xl">
+            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary">
+              <PackageSearch className="h-4 w-4" aria-hidden="true" />
+              {t("eyebrow")}
+            </span>
+            <h1 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">
+              {selectedCategory?.name ?? (selectedBrandNames.length === 1 ? selectedBrandNames[0] : t("heading"))}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
+              {selectedCategory || selectedBrandNames.length === 1 ? t("metadata.description", { site: `${settings.siteTitle}: ${selectedCategory?.name ?? selectedBrandNames[0]}` }) : t("description")}
+            </p>
+          </div>
+        </section>
+
+        <div className="mt-6 grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <CatalogFilterSidebar activeFilterCount={activeFilterCount}>
+            <CatalogFilterForm
+              key={catalogUrl(filters)}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              {activeFilterCount ? (
+                <div className="flex justify-end lg:hidden">
+                  <Link
+                    prefetch={false}
+                    href="/ecommerce/products"
+                    className="text-xs font-semibold text-primary hover:underline"
+                  >
+                    {t("clearAllFilters")}
+                  </Link>
+                </div>
+              ) : null}
+              <label className="mb-4 block space-y-2 text-sm font-semibold">
+                {t("search")}
+                <span className="relative block">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    name="q"
+                    defaultValue={filters.q}
+                    placeholder={t("searchPlaceholder")}
+                    maxLength={100}
+                    className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm font-normal outline-none focus:border-primary"
+                  />
+                </span>
+              </label>
+
+              <FilterSection
+                title={t("category")}
+                defaultOpen
+                badge={filters.category ? 1 : 0}
+              >
+                <select
+                  name="category"
+                  defaultValue={filters.category}
+                  aria-label={t("category")}
+                  className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                >
+                  <option value="">{t("allCategories")}</option>
+                  {facets.categories.map((category) => (
+                    <option key={category.id} value={category.slug}>
+                      {"— ".repeat(Math.min(category.depth, 3))}
+                      {category.name} ({category.productCount})
+                    </option>
+                  ))}
+                </select>
+              </FilterSection>
+
+              <FilterSection
+                title={t("brands")}
+                defaultOpen
+                badge={filters.brands.length}
+              >
+                <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
+                  {facets.brands
+                    .filter((brand) => brand.productCount > 0)
+                    .map((brand) => (
+                      <label
+                        key={brand.id}
+                        className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <input
+                            type="checkbox"
+                            name="brand"
+                            value={brand.slug}
+                            defaultChecked={filters.brands.includes(brand.slug)}
+                            className="h-4 w-4 rounded border-border accent-primary"
+                          />
+                          <span className="truncate">{brand.name}</span>
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {brand.productCount}
+                        </span>
+                      </label>
+                    ))}
+                </div>
+              </FilterSection>
+
+              <FilterSection title={t("productType")} badge={filters.type ? 1 : 0}>
+                <select
+                  name="type"
+                  defaultValue={filters.type}
+                  aria-label={t("productType")}
+                  className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                >
+                  <option value="">{t("allTypes")}</option>
+                  {facets.productTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {productTypeLabel(type)}
+                    </option>
+                  ))}
+                </select>
+              </FilterSection>
+
+              <FilterSection
+                title={t("priceRange")}
+                defaultOpen
+                badge={
+                  filters.minPrice !== null || filters.maxPrice !== null ? 1 : 0
+                }
+              >
+                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                  <input
+                    type="number"
+                    name="minPrice"
+                    min="0"
+                    max={CATALOG_MAX_PRICE}
+                    step="0.01"
+                    defaultValue={filters.minPrice ?? ""}
+                    placeholder={t("minPrice", { value: facets.priceRange.min })}
+                    aria-label={t("minimumPrice")}
+                    className="h-10 min-w-0 w-full rounded-lg border bg-background px-3 text-sm"
+                  />
+                  <input
+                    type="number"
+                    name="maxPrice"
+                    min="0"
+                    max={CATALOG_MAX_PRICE}
+                    step="0.01"
+                    defaultValue={filters.maxPrice ?? ""}
+                    placeholder={t("maxPrice", { value: facets.priceRange.max })}
+                    aria-label={t("maximumPrice")}
+                    className="h-10 min-w-0 w-full rounded-lg border bg-background px-3 text-sm"
+                  />
+                </div>
+              </FilterSection>
+
+              <FilterSection
+                title={t("availability")}
+                defaultOpen
+                badge={
+                  [filters.inStock, filters.featured].filter(Boolean).length
+                }
+              >
+                <div className="space-y-2 text-sm">
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      name="inStock"
+                      value="1"
+                      defaultChecked={filters.inStock}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    {t("inStockOnly")}
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      name="featured"
+                      value="1"
+                      defaultChecked={filters.featured}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    {t("featuredProducts")}
+                  </label>
+                </div>
+              </FilterSection>
+
+              <CatalogDynamicFilters
+                key={catalogUrl(filters)}
+                initial={catalogFacetPage(facets)}
+                category={filters.category}
+                selections={Object.fromEntries([
+                  ...Object.entries(filters.attributes).map(([key, values]) => [`attr_${key}`, values]),
+                  ...Object.entries(filters.variants).map(([key, values]) => [`variant_${key}`, values]),
+                  ...Object.entries(filters.specifications).map(([key, values]) => [`spec_${key}`, values]),
+                ])}
+              />
+
+              <div className="space-y-3 pt-3">
+                <label className="block space-y-2 text-sm font-semibold">
+                  {t("sortBy")}
+                  <select
+                    name="sort"
+                    defaultValue={filters.sort}
+                    className="h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal"
+                  >
+                    {SORT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {t(option.labelKey as any)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block space-y-2 text-sm font-semibold">
+                  {t("productsPerPage")}
+                  <select
+                    name="perPage"
+                    defaultValue={String(filters.perPage)}
+                    className="h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal"
+                  >
+                    <option value="12">12</option>
+                    <option value="24">24</option>
+                    <option value="36">36</option>
+                  </select>
+                </label>
+              </div>
+
+            </CatalogFilterForm>
+          </CatalogFilterSidebar>
+
+          <main id="catalog-results" className="group/results relative min-w-0">
+            <div className="pointer-events-none absolute inset-0 z-20 hidden justify-center bg-background/60 pt-24 group-aria-busy/results:flex" role="status">
+              <LoaderCircle className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+              <span className="sr-only">{filtersT("updating")}</span>
+            </div>
+            <div className="mb-4 flex flex-col gap-3 rounded-2xl border bg-card px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-bold">
+                  {filters.q
+                    ? t("resultsFor", { query: filters.q })
+                    : selectedCategory?.name ?? t("allProducts")}
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("showingResults", { first: firstResult, last: lastResult, total: pagination.total })}
+                  {selectedBrandNames.length
+                    ? ` · ${selectedBrandNames.join(", ")}`
+                    : ""}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {SORT_OPTIONS.slice(0, 4).map((option) => (
+                  <Link
+                    prefetch={false}
+                    key={option.value}
+                    href={catalogUrl(filters, { sort: option.value, page: 1 })}
+                    aria-current={filters.sort === option.value ? "page" : undefined}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      filters.sort === option.value
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "bg-background hover:border-primary hover:text-primary"
+                    }`}
+                  >
+                    {t(option.labelKey as any)}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {activeFilterLinks.length ? (
+              <div
+                className="mb-4 flex flex-wrap items-center gap-2"
+                aria-label={t("active.label")}
+              >
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {t("active.title")}:
+                </span>
+                {activeFilterLinks.map((filter) => (
+                  <Link
+                    prefetch={false}
+                    key={filter.key}
+                    href={filter.href}
+                    aria-label={t("active.remove", { label: filter.label })}
+                    className="inline-flex items-center gap-1 rounded-full border bg-card px-3 py-1.5 text-xs font-semibold transition hover:border-primary hover:text-primary"
+                  >
+                    {filter.label}
+                    <span aria-hidden="true">×</span>
+                  </Link>
+                ))}
+                <Link
+                    prefetch={false}
+                  href="/ecommerce/products"
+                  className="px-2 py-1 text-xs font-semibold text-primary hover:underline"
+                >
+                  {t("clearAll")}
+                </Link>
+              </div>
+            ) : null}
+
+            {products.length ? (
+              <CatalogProductGrid
+                products={products}
+                searchQuery={filters.q}
+                resultCount={pagination.total}
+                itemListId={
+                  filters.q
+                    ? "search_results"
+                    : selectedCategory
+                      ? `category_${selectedCategory.slug}`
+                      : selectedBrandNames.length
+                        ? `brand_${filters.brands[0]}`
+                        : "all_products"
+                }
+                itemListName={
+                  filters.q
+                    ? "Search results"
+                    : selectedCategory?.name ??
+                      selectedBrandNames[0] ??
+                      "All products"
+                }
+              />
+            ) : (
+              <div className="rounded-3xl border border-dashed bg-muted/20 px-6 py-16 text-center">
+                <PackageSearch className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h2 className="mt-4 text-xl font-bold">{t("empty.title")}</h2>
+                <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                  {t("empty.description")}
+                </p>
+                <Link
+                    prefetch={false}
+                  href="/ecommerce/products"
+                  className="mt-5 inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground"
+                >
+                  {t("empty.viewAll")}
+                </Link>
+              </div>
+            )}
+
+            {pagination.totalPages > 1 ? (
+              <nav
+                className="mt-8 flex flex-wrap items-center justify-center gap-2"
+                aria-label={t("pagination.label")}
+              >
+                <Link
+                    prefetch={false}
+                  href={catalogUrl(filters, {
+                    page: Math.max(1, pagination.page - 1),
+                  })}
+                  aria-disabled={pagination.page <= 1}
+                  className={`rounded-lg border px-4 py-2 text-sm font-semibold ${
+                    pagination.page <= 1
+                      ? "pointer-events-none opacity-40"
+                      : "hover:border-primary hover:text-primary"
+                  }`}
+                >
+                  {t("pagination.previous")}
+                </Link>
+                {pages.map((page, index) => {
+                  const previous = pages[index - 1];
+                  return (
+                    <span key={page} className="contents">
+                      {previous && page - previous > 1 ? (
+                        <span className="px-1 text-muted-foreground">…</span>
+                      ) : null}
+                      <Link
+                    prefetch={false}
+                        href={catalogUrl(filters, { page })}
+                        aria-current={pagination.page === page ? "page" : undefined}
+                        className={`inline-flex h-10 min-w-10 items-center justify-center rounded-lg border px-3 text-sm font-bold ${
+                          pagination.page === page
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "hover:border-primary hover:text-primary"
+                        }`}
+                      >
+                        {page}
+                      </Link>
+                    </span>
+                  );
+                })}
+                <Link
+                    prefetch={false}
+                  href={catalogUrl(filters, {
+                    page: Math.min(pagination.totalPages, pagination.page + 1),
+                  })}
+                  aria-disabled={pagination.page >= pagination.totalPages}
+                  className={`rounded-lg border px-4 py-2 text-sm font-semibold ${
+                    pagination.page >= pagination.totalPages
+                      ? "pointer-events-none opacity-40"
+                      : "hover:border-primary hover:text-primary"
+                  }`}
+                >
+                  {t("pagination.next")}
+                </Link>
+              </nav>
+            ) : null}
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
