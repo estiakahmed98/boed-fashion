@@ -7,21 +7,21 @@ import { normalizeBoedCatalog, boedMediaPath } from "../scripts/boed-catalog.mjs
 const source = JSON.parse(readFileSync(new URL("../public/boed_static_public/products.json", import.meta.url), "utf8"));
 test("all BOED products map to unique database identities and existing local assets", () => {
   const rows = normalizeBoedCatalog(source);
-  assert.equal(rows.length, 338);
+  assert.equal(rows.length, source.total);
   assert.equal(new Set(rows.map(row => row.product.sku)).size, rows.length);
   for (const row of rows) {
     for (const image of row.product.gallery) assert.ok(existsSync(path.join(process.cwd(), "public", image)), image);
-    assert.ok(row.categories.length >= 2);
+    assert.ok(row.categories.length >= 1);
     assert.equal(row.product.currency, "BDT");
     assert.equal(row.variants.filter(variant => variant.isDefault).length, 1);
   }
 });
-test("explicit source stock imports without treating candidate sizes as verified variants", () => {
+test("source stock and verified sizes map without guessing per-size inventory", () => {
   for (const row of normalizeBoedCatalog(source)) {
     const item = source.products.find(product => product.slug === row.product.slug);
-    assert.equal(row.variants[0].stock, item.stock);
+    assert.equal(row.variants[0].stock, row.verifiedSizes.length > 1 ? 0 : item.stock);
     assert.equal(row.variants[0].options.__meta.sourceStockInitialized, true);
-    assert.deepEqual(row.verifiedSizes, []);
+    assert.deepEqual(row.verifiedSizes, item.requiresSizeVerification ? [] : [...new Set((item.sizes || []).filter(value => typeof value === "string" && value.trim()))]);
     assert.equal(row.variants[0].options.__meta.requiresPriceVerification, true);
     assert.ok(Array.isArray(row.variants[0].options.__meta.candidateSizes));
   }

@@ -215,7 +215,18 @@ export default async function Home() {
           data-reveal=""
           className="collection-story-image h-[clamp(600px,_58vw,_1000px)] overflow-hidden bg-[#e8e8e2] max-[700.01px]:h-[620px]"
         >
-          <img className="h-full w-full object-cover object-[center_20%]" src={homeImages.story} alt="A closer look at the textures of Italian knitwear" loading="lazy" />
+          <video
+            className="h-full w-full object-cover object-[center_20%]"
+            src={homeImages.storyVideo}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            aria-label="Exceptional texture in the knitwear collection"
+          >
+            Your browser does not support the video tag.
+          </video>
         </div>
         <div className="collection-story-copy [align-self:center] p-[60px_10%] [&_.editorial-kicker]:[color:#8b8c80] [&_.editorial-kicker]:[font-size:9px] [&_h2]:[font-size:clamp(36px,_3.3vw,_60px)] [&_h2]:[font-family:var(--serif)] [&_h2]:[font-weight:var(--font-weight-normal,_400)] [&_h2]:leading-[1.08] [&_h2]:tracking-[-0.025em] [&_h2]:m-[24px_0_30px] [&_p]:max-w-[540px] [&_p]:[font-size:13px] [&_p]:leading-[1.9] [&_p]:[color:#7d8075] [&_p]:mb-[22px] [&_p.collection-story-detail]:[font-size:11px] [&_p.collection-story-detail]:[color:#454d41] [&_p.collection-story-detail]:m-[30px_0] max-[1000.01px]:p-[40px_9%] max-[700.01px]:p-[45px_7%_0] max-[700.01px]:[&_h2]:[font-size:43px] max-[700.01px]:[&_h2]:m-[18px_0_24px] max-[700.01px]:[&_p]:[font-size:12px]">
           <span

@@ -3,6 +3,7 @@ import { readFile, access, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { normalizeBoedCatalog } from "../scripts/boed-catalog.mjs";
 import type { Prisma } from "../generated/prisma";
+import { syncVariantWarehouseStock } from "../lib/inventory";
 
 export async function seedBoed(options: { apply?: boolean; export?: boolean } = {}) {
   loadEnvConfig(process.cwd());
@@ -23,12 +24,13 @@ export async function seedBoed(options: { apply?: boolean; export?: boolean } = 
   if (!options.apply) { console.log("Validation only. Use --apply to insert missing BOED records."); return; }
   const { PrismaClient } = await import("../generated/prisma/index.js");
   const db = new PrismaClient();
-  let created = 0; let skipped = 0; let stockRestored = 0;
+  let created = 0; let skipped = 0;   let stockRestored = 0;
+  let stockLevelsInitialized = 0;
   try {
     // Check identity collisions before inserts or the one-time legacy stock repair.
     const existing = await db.product.findMany({ where: { OR: [{ slug: { in: catalog.map(item => item.product.slug) } }, { sku: { in: catalog.map(item => item.product.sku) } }] }, select: {
-      slug: true, sku: true,
-      variants: { select: { id: true, stock: true, active: true, options: true, _count: { select: { stockLevels: true, orderItems: true, inventoryLogs: true } } } },
+      id: true, slug: true, sku: true,
+      variants: { select: { id: true, sku: true, stock: true, active: true, options: true, _count: { select: { stockLevels: true, orderItems: true, inventoryLogs: true } } } },
     } });
     const bySlug = new Map(existing.map(item => [item.slug, item]));
     for (const item of catalog) {
@@ -36,9 +38,37 @@ export async function seedBoed(options: { apply?: boolean; export?: boolean } = 
       if (collision && collision.sku !== item.product.sku) throw new Error(`Existing unrelated product uses slug: ${item.product.slug}`);
       if (existing.some(row => row.sku === item.product.sku && row.slug !== item.product.slug)) throw new Error(`SKU collision: ${item.product.sku}`);
     }
+    let primaryWarehouse = await db.warehouse.findFirst({
+      orderBy: [{ isDefault: "desc" }, { id: "asc" }],
+      select: { id: true },
+    });
+    if (!primaryWarehouse) {
+      primaryWarehouse = await db.warehouse.create({
+        data: { name: "Main Warehouse", code: "MAIN", country: "BD", isDefault: true },
+        select: { id: true },
+      });
+    }
+
     for (const item of catalog) {
       const imported = bySlug.get(item.product.slug);
       if (imported) {
+        for (const variant of imported.variants) {
+          const sourceVariant = item.variants.find(source => source.sku === variant.sku);
+          if (!sourceVariant) continue;
+          const options = (variant.options && typeof variant.options === "object" && !Array.isArray(variant.options) ? variant.options : {}) as Prisma.JsonObject;
+          const metadata = (options.__meta && typeof options.__meta === "object" && !Array.isArray(options.__meta) ? options.__meta : {}) as Prisma.JsonObject;
+          if (variant.active && variant.stock === sourceVariant.stock && !variant._count.stockLevels && !variant._count.orderItems && !variant._count.inventoryLogs && metadata.sourceId === item.review.sourceId && (sourceVariant.stock === 0 || metadata.sourceStockInitialized) && !metadata.demoStockSeeded) {
+            await db.$transaction(tx => syncVariantWarehouseStock({
+              tx,
+              productId: imported.id,
+              productVariantId: variant.id,
+              quantity: sourceVariant.stock,
+              reason: "Initialize missing warehouse stock from BOED catalog",
+              warehouseId: primaryWarehouse.id,
+            }));
+            stockLevelsInitialized++;
+          }
+        }
         // Repair the old importer's zero-stock defaults once. Never restock a
         // product that has since been managed, reserved, sold or split into sizes.
         const variant = imported.variants.length === 1 ? imported.variants[0] : null;
@@ -68,12 +98,23 @@ export async function seedBoed(options: { apply?: boolean; export?: boolean } = 
         }
         await tx.product.create({ data: {
           ...item.product, type: "PHYSICAL", categoryId: parentId!,
-          variants: { create: item.variants },
+          variants: {
+            create: item.variants.map(variant => ({
+              ...variant,
+              stockLevels: {
+                create: {
+                  warehouseId: primaryWarehouse.id,
+                  quantity: variant.stock,
+                  reserved: 0,
+                },
+              },
+            })),
+          },
           ...(item.verifiedSizes.length ? { variantOptions: { create: { name: "Size", position: 0, values: { create: item.verifiedSizes.map((value, position) => ({ value, position })) } } } } : {}),
         } });
       });
       created++;
     }
-    console.log(`BOED import complete: ${created} created, ${skipped} already present, ${stockRestored} legacy stock quantities restored from JSON.`);
+    console.log(`BOED import complete: ${created} created, ${skipped} already present, ${stockRestored} legacy stock quantities restored from JSON, ${stockLevelsInitialized} missing warehouse stock levels initialized.`);
   } finally { await db.$disconnect(); }
 }

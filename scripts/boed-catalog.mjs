@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
+import path from "node:path";
 
 export function categorySlug(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -6,7 +8,14 @@ export function categorySlug(name) {
 
 export function boedMediaPath(value) {
   if (typeof value !== "string" || !/^\/boed-media\/[a-zA-Z0-9_.-]+$/.test(value)) throw new Error(`Invalid BOED media path: ${value}`);
-  return value.replace("/boed-media/", "/boed_static_public/boed-media/");
+  const filename = value.slice("/boed-media/".length);
+  const mediaLocations = [
+    { directory: "boed_static_public/boed-media", urlPrefix: "/boed_static_public/boed-media/" },
+    { directory: "boed-media", urlPrefix: "/boed-media/" },
+  ];
+  const location = mediaLocations.find(({ directory }) => existsSync(path.join(process.cwd(), "public", directory, filename)));
+  if (!location) throw new Error(`Missing BOED media asset: ${value}`);
+  return `${location.urlPrefix}${filename}`;
 }
 
 export function normalizeBoedCatalog(source) {
@@ -18,7 +27,7 @@ export function normalizeBoedCatalog(source) {
     if (!Number.isFinite(item.price) || item.price < 0 || item.price > 99999999.99 || item.currency !== "BDT") throw new Error(`Invalid price/currency: ${item.slug}`);
     if (!Number.isSafeInteger(item.stock) || item.stock < 0) throw new Error(`Invalid stock: ${item.slug}`);
     const categories = item.category.split(" / ").map(name => name.trim());
-    if (categories.length !== 2 || categories.some(name => !name)) throw new Error(`Invalid category: ${item.slug}`);
+    if (!categories.length || categories.some(name => !name)) throw new Error(`Invalid category: ${item.slug}`);
     // Shirts and jackets are navigation parents, retaining the source subcategories.
     if (["Classic Shirts", "Casual Shirts"].includes(categories[1])) categories.splice(1, 0, "Shirts");
     if (categories[1] === "Outerwear") categories.splice(1, 0, "Jackets");
