@@ -108,7 +108,7 @@
     "test:specifications": "tsx --test tests/product-specifications.test.mjs",
     "verify:universal-phase9": "npm run verify:universal-phase8 && npm run test:universal-phase9",
     "seed:boed": "tsx scripts/seed-boed.ts",
-    "test:boed": "node --test tests/boed-catalog.test.mjs",
+    "test:boed": "node --import tsx --test tests/boed-catalog.test.mjs tests/boed-categories.test.mjs",
     "seed:admin": "tsx scripts/seed-admin.ts"
   },
   "dependencies": {

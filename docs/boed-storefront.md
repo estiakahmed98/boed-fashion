@@ -10,6 +10,14 @@ Homepage campaign images are read from active, currently scheduled Banner Manage
 
 ## Seed mapping
 
+### Production deployment
+
+`vercel.json` sets the build command to `npx prisma generate && npm run build`, overriding the old dashboard command that ran `prisma db push` and `prisma db seed` on every deploy. Builds no longer change schema, import catalog data, or reset the seeded admin password. Commit this file with the code changes before deploying; redeploying the old commit will still run the old command.
+
+The reported deployment completed schema sync but failed inside the BOED importer with a closed/invalid Prisma transaction before Next.js started building. Category paths are now cached per import and resolved outside interactive transactions. Product, variant, size-option and warehouse-stock nested writes remain atomic. Categories may remain after a failed product insert; rerunning the importer reuses them and skips completed products. The remaining inventory-repair and admin transactions have explicit 10-second acquisition and 30-second execution limits; database/proxy limits can still end a connection earlier.
+
+Run database setup separately against the intended database when needed. For an existing database created with `db push`, follow `prisma/migrations-release/README.md` before adopting migrations. The failed deployment already synchronized its schema, so another schema push is not needed just to retry that build. To resume only the catalog import, run `npm run seed:boed -- --apply` with the intended database environment; `npx prisma db seed` also resets the configured seed admin account. New databases still require schema setup and an explicit seed before serving the catalog.
+
 `public/boed_static_public/products.json` remains the source of truth. `scripts/boed-catalog.mjs` maps it to the current schema without a migration:
 
 | Source | Database |
@@ -21,7 +29,7 @@ Homepage campaign images are read from active, currently scheduled Banner Manage
 | verified sizes | ProductVariant and ProductVariantOption/Value |
 | review flags, source URL, candidate sizes, estimated stock | variant options `__meta`, retained for review |
 
-The catalog importer uses each product's explicit JSON `stock` for its single default variant. Price/size/source review flags remain metadata and no longer silently force stock to zero. Candidate sizes are not actual variants; products with multiple verified sizes still need per-size quantities. Existing unmodified BOED rows left at zero by the old importer receive a one-time stock repair from JSON, marked by `sourceStockInitialized`. Rows with warehouse stock, inventory logs, order history, multiple variants or previously initialized stock are preserved. Normal repeat runs do not replenish sold or manually adjusted inventory. Unrelated slug/SKU/hierarchy collisions stop the import. Each new product and its category/variant records are inserted transactionally.
+The catalog importer uses each product's explicit JSON `stock` for its single default variant. Price/size/source review flags remain metadata and no longer silently force stock to zero. Candidate sizes are not actual variants; products with multiple verified sizes still need per-size quantities. Existing unmodified BOED rows left at zero by the old importer receive a one-time stock repair from JSON, marked by `sourceStockInitialized`. Rows with warehouse stock, inventory logs, order history, multiple variants or previously initialized stock are preserved. Normal repeat runs do not replenish sold or manually adjusted inventory. Unrelated slug/SKU/hierarchy collisions stop the import. Category paths are resolved and cached separately; each new product and its nested variant, option and stock records are inserted atomically.
 
 ```powershell
 npx prisma db seed             # default seed: imports missing BOED products

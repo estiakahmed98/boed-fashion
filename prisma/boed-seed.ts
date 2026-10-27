@@ -4,6 +4,7 @@ import path from "node:path";
 import { normalizeBoedCatalog } from "../scripts/boed-catalog.mjs";
 import type { Prisma } from "../generated/prisma";
 import { syncVariantWarehouseStock } from "../lib/inventory";
+import { resolveBoedCategory } from "./boed-categories";
 
 export async function seedBoed(options: { apply?: boolean; export?: boolean } = {}) {
   loadEnvConfig(process.cwd());
@@ -26,6 +27,7 @@ export async function seedBoed(options: { apply?: boolean; export?: boolean } = 
   const db = new PrismaClient();
   let created = 0; let skipped = 0;   let stockRestored = 0;
   let stockLevelsInitialized = 0;
+  const categoryCache = new Map<string, { id: number; parentId: number | null }>();
   try {
     // Check identity collisions before inserts or the one-time legacy stock repair.
     const existing = await db.product.findMany({ where: { OR: [{ slug: { in: catalog.map(item => item.product.slug) } }, { sku: { in: catalog.map(item => item.product.sku) } }] }, select: {
@@ -65,7 +67,7 @@ export async function seedBoed(options: { apply?: boolean; export?: boolean } = 
               quantity: sourceVariant.stock,
               reason: "Initialize missing warehouse stock from BOED catalog",
               warehouseId: primaryWarehouse.id,
-            }));
+            }), { maxWait: 10_000, timeout: 30_000 });
             stockLevelsInitialized++;
           }
         }
@@ -85,19 +87,11 @@ export async function seedBoed(options: { apply?: boolean; export?: boolean } = 
         skipped++;
         continue;
       }
-      await db.$transaction(async tx => {
-        let parentId: number | null = null;
-        for (const category of item.categories) {
-          const current: { id: number; parentId: number | null } = await tx.category.upsert({
-            where: { slug: category.slug }, update: {},
-            create: { ...category, parentId, showInHeader: true, showInFooter: true },
-            select: { id: true, parentId: true },
-          });
-          if (current.parentId !== parentId) throw new Error(`Existing category hierarchy differs: ${category.slug}`);
-          parentId = current.id;
-        }
-        await tx.product.create({ data: {
-          ...item.product, type: "PHYSICAL", categoryId: parentId!,
+      const categoryId = await resolveBoedCategory(db, item.categories, categoryCache);
+      // Nested writes atomically create the product, variants and stock without
+      // holding an interactive transaction across category network round trips.
+      await db.product.create({ data: {
+          ...item.product, type: "PHYSICAL", categoryId,
           variants: {
             create: item.variants.map(variant => ({
               ...variant,
@@ -112,8 +106,8 @@ export async function seedBoed(options: { apply?: boolean; export?: boolean } = 
           },
           ...(item.verifiedSizes.length ? { variantOptions: { create: { name: "Size", position: 0, values: { create: item.verifiedSizes.map((value, position) => ({ value, position })) } } } } : {}),
         } });
-      });
       created++;
+      if (created % 25 === 0) console.log(`BOED import progress: ${created} products created.`);
     }
     console.log(`BOED import complete: ${created} created, ${skipped} already present, ${stockRestored} legacy stock quantities restored from JSON, ${stockLevelsInitialized} missing warehouse stock levels initialized.`);
   } finally { await db.$disconnect(); }

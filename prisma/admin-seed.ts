@@ -13,7 +13,7 @@ export async function seedAdmin() {
       const role = await tx.role.upsert({ where: { name: "superadmin" }, create: { name: "superadmin", label: "Super Admin", isSystem: true, isImmutable: true }, update: { deletedAt: null, isSystem: true, isImmutable: true } });
       const assignment = await tx.userRole.findFirst({ where: { userId: admin.id, roleId: role.id, scopeType: "GLOBAL", warehouseId: null } });
       if (!assignment) await tx.userRole.create({ data: { userId: admin.id, roleId: role.id, scopeType: "GLOBAL" } });
-    });
+    }, { maxWait: 10_000, timeout: 30_000 });
     console.log("Admin account seeded: admin@example.com (global superadmin).");
   } finally { await db.$disconnect(); }
 }
