@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+import Script from "next/script";
+import { themeMigrationScript } from "@/lib/theme-migration";
 import GoogleTagManager from "@/components/analytics/GoogleTagManager";
 import GooglePageViewTracker from "@/components/analytics/GooglePageViewTracker";
 import { serializeJsonLd } from "@/lib/seo";
@@ -159,6 +161,7 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} dir={getLocaleDirection(locale)} suppressHydrationWarning>
+      <head><Script id="theme-contract-migration" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeMigrationScript }} /></head>
       <body
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} ${rubik.variable} ${syne.variable} ${lexend.variable} antialiased min-h-screen flex flex-col`}

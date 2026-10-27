@@ -3,6 +3,7 @@ import { useStorefrontSettings } from "@/providers/storefront-settings-provider"
 import { ecommerceFromRows } from "@/lib/analytics/ecommerce";
 import { trackAddToCart, trackRemoveFromCart } from "@/lib/analytics/data-layer";
 import { formatVariantOptionLabel } from "@/lib/product-variants";
+import { useSession } from "@/lib/auth-client";
 
 import {
   createContext,
@@ -68,6 +69,7 @@ type CartAnimationOptions = {
 
 interface CartContextType {
   cartItems: CartItem[];
+  cartHydrated: boolean;
 
   addToCart: (
     productId: string | number,
@@ -122,18 +124,10 @@ const createCartRowId = () =>
 
 export function CartProvider({ children }: { children: ReactNode }) {
   // 🛒 cartItems -> localStorage synced
-  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem("cartItems");
-        return saved ? JSON.parse(saved) : [];
-      } catch (e) {
-        console.error("Failed to parse cartItems from localStorage:", e);
-        return [];
-      }
-    }
-    return [];
-  });
+  // The server and first client render must both start with an empty cart.
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartHydrated, setCartHydrated] = useState(false);
+  const { status: sessionStatus } = useSession();
 
   const { currency } = useStorefrontSettings();
   const previousCartRef = useRef(cartItems);
@@ -184,14 +178,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCartItems(safe);
   }, []);
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("cartItems");
+      if (saved) replaceCart(JSON.parse(saved));
+    } catch (error) {
+      console.error("Failed to restore cartItems from localStorage:", error);
+    } finally {
+      setCartHydrated(true);
+    }
+  }, [replaceCart]);
+
   // cartItems localStorage এ sync
   useEffect(() => {
+    if (!cartHydrated) return;
     try {
       localStorage.setItem("cartItems", JSON.stringify(cartItems));
     } catch (e) {
       console.error("Failed to save cartItems to localStorage:", e);
     }
-  }, [cartItems]);
+  }, [cartItems, cartHydrated]);
 
   // 🔁 অন্য ট্যাব বা কোড থেকে localStorage change হলে অটো sync
   useEffect(() => {
@@ -387,7 +393,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       let persistedVariantPrice = Number(variant?.price ?? product.price);
       let persistedVariantLabel = variantLabel;
 
-      if (fromPcBuilder) {
+      if (fromPcBuilder && sessionStatus === "authenticated") {
         try {
           const response = await fetch("/api/cart", {
             method: "POST",
@@ -417,7 +423,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (!fromPcBuilder) {
+      if (!fromPcBuilder && sessionStatus === "authenticated") {
         try {
           const response = await fetch("/api/cart", {
             method: "POST",
@@ -447,12 +453,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
               );
               if (persistedVariant) {
                 persistedVariantPrice = Number(persistedVariant.price ?? product.price);
-                persistedVariantLabel =
-                  persistedVariant.options && Object.keys(persistedVariant.options).length > 0
-                    ? Object.entries(persistedVariant.options)
-                        .map(([key, value]) => `${key}: ${String(value)}`)
-                        .join(", ")
-                    : persistedVariant.sku ?? null;
+                persistedVariantLabel = formatVariantOptionLabel(persistedVariant.options);
               }
             }
             persistedBundleKey = typeof data?.lineKey === "string" ? data.lineKey : null;
@@ -561,7 +562,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return true;
     },
-    []
+    [sessionStatus]
   );
 
   const removeFromCart = useCallback((id: string | number) => {
@@ -589,6 +590,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     <CartContext.Provider
       value={{
         cartItems,
+        cartHydrated,
         addToCart,
         removeFromCart,
         updateQuantity,

@@ -4,9 +4,10 @@ import { SidebarProvider, useSidebar } from "@/providers/sidebar-provider";
 import { useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Sidebar from "@/components/admin/Sidebar";
 import Header from "@/components/admin/Header";
+import "@/components/admin/admin-workspace.css";
 import {
   getDashboardRoute,
   isDeliveryAdminShellRoute,
@@ -15,8 +16,8 @@ import { getLocaleDirection } from "@/i18n/config";
 
 function AdminLoadingShell({ direction }: { direction: "ltr" | "rtl" }) {
   return (
-    <div dir={direction} className="flex min-h-screen bg-background">
-      <div className="hidden lg:block lg:w-60 bg-card border-r border-border">
+    <div dir={direction} className="boed-admin flex min-h-screen bg-background">
+      <div className="hidden lg:block lg:w-[286px] shrink-0 bg-card border-r border-border">
         <div className="p-6 space-y-6">
           <div className="h-10 bg-muted rounded-lg animate-pulse" />
           <div className="space-y-2">
@@ -87,6 +88,7 @@ function AdminLoadingShell({ direction }: { direction: "ltr" | "rtl" }) {
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const { openMobile, toggleSidebar, setOpenMobile } = useSidebar();
+  const mobilePanelRef = useRef<HTMLDivElement>(null);
   const { data: session, status } = useSession();
   const locale = useLocale();
   const pathname = usePathname() ?? "";
@@ -141,6 +143,36 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     status,
   ]);
 
+  useEffect(() => {
+    if (!openMobile) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousFocus = document.activeElement;
+    document.body.style.overflow = "hidden";
+    const focusable = () => Array.from(mobilePanelRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled])') ?? []).filter(element => element.getClientRects().length);
+    const focusFrame = requestAnimationFrame(() => focusable()[0]?.focus());
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenMobile(false);
+      if (event.key !== "Tab") return;
+      const elements = focusable();
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const onResize = () => { if (desktop.matches) setOpenMobile(false); };
+    desktop.addEventListener("change", onResize);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onEscape);
+      desktop.removeEventListener("change", onResize);
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
+    };
+  }, [openMobile, setOpenMobile]);
+
   // Do not mount an unauthorized admin child while navigation is in flight.
   // This prevents pages such as /admin from firing API calls the role cannot use.
   if (
@@ -152,7 +184,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div dir={contentDirection} className="flex min-h-screen bg-background relative">
+    <div dir={contentDirection} className="boed-admin flex min-h-screen bg-background relative">
       <style>{`
         .rbac-hide-dashboard-links a[href="/admin"],
         .rbac-hide-dashboard-links a[href="/admin/analytics"] {
@@ -172,6 +204,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       )}
 
       <div
+        ref={mobilePanelRef}
+        role="dialog"
+        aria-label="Admin navigation"
+        aria-modal={openMobile || undefined}
+        aria-hidden={!openMobile}
+        inert={!openMobile}
         className={`fixed inset-y-0 transform ${
           isRtl
             ? `right-0 left-auto ${openMobile ? "translate-x-0" : "translate-x-full"}`
@@ -181,13 +219,13 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <Sidebar isMobile onClose={() => setOpenMobile(false)} />
       </div>
 
-      <div className={`hidden lg:block lg:w-60 ${limitedOverviewClass}`}>
+      <div className={`hidden lg:block lg:w-[286px] shrink-0 ${limitedOverviewClass}`}>
         <Sidebar />
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+      <div className="boed-admin-content flex-1 flex flex-col overflow-hidden lg:ml-0">
         <Header onMenuClick={toggleSidebar} />
-        <main className="flex-1 overflow-y-auto bg-background">
+        <main className="boed-admin-main flex-1 overflow-y-auto bg-background">
           <div>{children}</div>
         </main>
       </div>

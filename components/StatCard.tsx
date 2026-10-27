@@ -93,7 +93,7 @@ export function StatCard({
   };
 
   return (
-    <article className="group relative overflow-hidden rounded-xl border border-border/70 bg-card/95 p-2 sm:p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+    <article className="boed-admin-kpi group relative overflow-hidden rounded-xl border border-border/70 bg-card/95 p-2 sm:p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
       <div className={`absolute inset-0 bg-gradient-to-br ${getGradientClass()}`} />
 
       <div className="relative flex items-start justify-between gap-2">

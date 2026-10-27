@@ -85,20 +85,16 @@ const SignupForm = () => {
   };
 
   return (
-    <Card className="border border-border bg-card text-card-foreground shadow-md max-w-md mx-auto">
+    <Card className="boed-auth-form border border-border bg-card text-card-foreground shadow-md max-w-md mx-auto">
       <div className="h-1 w-full bg-gradient-to-r from-primary via-ring to-destructive rounded-t-xl" />
 
-      <CardHeader className="items-center pb-4 pt-6">
-        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-foreground">
-          <User className="h-6 w-6" />
-        </div>
-        <CardTitle className="text-2xl font-semibold text-foreground">Sign Up</CardTitle>
-        <CardDescription className="text-sm text-muted-foreground text-center">
-          {returnUrl ? "Create an account to continue your secure invitation flow" : "Create your account to continue"}
-        </CardDescription>
+      <CardHeader className="boed-auth-form-heading">
+        <span className="boed-auth-eyebrow mb-3">AURA BOED ACCOUNT</span>
+        <CardTitle>Make yourself at home</CardTitle>
+        <CardDescription>Create your Aura BOED account and make it personal.</CardDescription>
       </CardHeader>
 
-      <CardContent className="pt-0 pb-6">
+      <CardContent className="boed-auth-form-body">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormFieldset className="space-y-4">

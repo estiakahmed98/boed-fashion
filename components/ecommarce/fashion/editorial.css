@@ -61,3 +61,12 @@
 .editorial-store .storefront-type{font-family:var(--sans)}
 
 .editorial-product-information{margin:0 3.3% 60px}.editorial-product-information .rounded-xl{border-radius:0;box-shadow:none}
+
+/* Keep the panel mounted so both opening and closing can animate. */
+.editorial-mega-panel{opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-12px);transition:opacity 220ms ease,transform 280ms cubic-bezier(.22,1,.36,1),visibility 0s linear 280ms}
+.editorial-mega-panel[data-open=true]{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0);transition-delay:0s}
+.editorial-mega-panel>.editorial-mega-column,.editorial-mega-panel>.editorial-mega-promo{opacity:0;transform:translateY(8px);transition:opacity 160ms ease,transform 200ms ease}
+.editorial-mega-panel[data-open=true]>.editorial-mega-column,.editorial-mega-panel[data-open=true]>.editorial-mega-promo{opacity:1;transform:translateY(0);transition-duration:260ms,320ms;transition-delay:60ms}
+.editorial-mega-panel[data-open=true]>:nth-child(2){transition-delay:90ms}.editorial-mega-panel[data-open=true]>:nth-child(3){transition-delay:120ms}.editorial-mega-panel[data-open=true]>:nth-child(4){transition-delay:150ms}
+.editorial-menu-shade{opacity:0;visibility:hidden;pointer-events:none;transition:opacity 240ms ease,visibility 0s linear 240ms}.editorial-menu-shade[data-open=true]{opacity:1;visibility:visible;pointer-events:auto;transition-delay:0s}
+@media(prefers-reduced-motion:reduce){.editorial-mega-panel,.editorial-mega-panel>*,.editorial-menu-shade{transition:none!important;transform:none!important}}

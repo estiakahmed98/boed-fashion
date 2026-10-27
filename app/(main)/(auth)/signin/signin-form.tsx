@@ -117,22 +117,16 @@ const SigninForm = () => {
   };
 
   return (
-    <Card className="border border-border bg-card text-card-foreground shadow-md max-w-md mx-auto">
+    <Card className="boed-auth-form border border-border bg-card text-card-foreground shadow-md max-w-md mx-auto">
       <div className="h-1 w-full bg-gradient-to-r from-primary via-ring to-destructive rounded-t-xl" />
 
-      <CardHeader className="items-center pb-4 pt-6">
-        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-foreground">
-          <Lock className="h-6 w-6" />
-        </div>
-        <CardTitle className="text-2xl font-semibold text-foreground">
-          Log In
-        </CardTitle>
-        <CardDescription className="text-sm text-muted-foreground text-center">
-          Enter your account details to access your dashboard
-        </CardDescription>
+      <CardHeader className="boed-auth-form-heading">
+        <span className="boed-auth-eyebrow mb-3">AURA BOED ACCOUNT</span>
+        <CardTitle>Welcome back</CardTitle>
+        <CardDescription>Sign in to your account. Your world is waiting.</CardDescription>
       </CardHeader>
 
-      <CardContent className="pt-0 pb-6">
+      <CardContent className="boed-auth-form-body">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormFieldset className="space-y-4">
@@ -191,6 +185,7 @@ const SigninForm = () => {
                         type="button"
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? (
                           <EyeOff className="h-5 w-5" />
@@ -228,7 +223,7 @@ const SigninForm = () => {
             Don&apos;t have an account?{" "}
           </span>
           <Link
-            href="/sign-up"
+            href={returnUrl ? `/sign-up?returnUrl=${encodeURIComponent(returnUrl)}` : "/sign-up"}
             className="font-medium text-foreground hover:underline"
           >
             Create an account

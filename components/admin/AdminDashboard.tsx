@@ -619,7 +619,7 @@ function AdminDashboard({
   }));
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-background via-background to-muted/20 px-2 py-3 md:px-3 md:py-4 xl:px-4">
+    <div className="boed-admin-dashboard min-h-screen overflow-x-hidden bg-gradient-to-br from-background via-background to-muted/20 px-2 py-3 md:px-3 md:py-4 xl:px-4">
       <div className="w-full space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

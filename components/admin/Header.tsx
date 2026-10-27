@@ -30,7 +30,7 @@ import { isDarkLikeTheme } from "@/lib/theme";
 import { DEFAULT_SITE_TITLE } from "@/lib/site-defaults";
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   getLocaleDirection,
   localeCookieName,
@@ -87,6 +87,8 @@ type AdminNotificationPreview = ScmNotificationPreview & {
 
 export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
   const router = useRouter();
+  const pathname = usePathname() ?? "/admin";
+  const workspaceSection = pathname === "/admin" ? "Dashboard" : (pathname.split("/").filter(Boolean).pop() || "Dashboard").replaceAll("-", " ");
   const locale = useLocale();
   const t = useTranslations("AdminHeader");
   const { data: session } = useSession();
@@ -336,7 +338,7 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
   [scmNotifications, investorNotifications]);
 
   return (
-    <header className="w-full h-20 bg-background border-border border-b flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20 shadow-sm">
+    <header className="boed-admin-header w-full h-20 bg-background border-border border-b flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20 shadow-sm">
       {/* Mobile menu toggle */}
       <button
         className="lg:hidden bg-muted hover:bg-primary/80 transition-all duration-300 hover:scale-105"
@@ -346,27 +348,7 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
         <Menu className="w-5 h-5 text-foreground" />
       </button>
 
-      {/* Logo and Title */}
-      <div className="flex items-center space-x-3">
-        <div className="flex flex-col">
-          <h1 className="text-lg font-bold text-foreground hidden sm:block">
-            {loadingSite ? (
-              <div className="h-5 w-24 bg-gray-200 rounded animate-pulse"></div>
-            ) : siteSettings?.siteTitle ? (
-              `${siteSettings.siteTitle} ${t("admin")}`
-            ) : (
-              `${DEFAULT_SITE_TITLE} ${t("admin")}`
-            )}
-          </h1>
-          <h1 className="text-lg font-bold text-foreground sm:hidden">
-            {loadingSite ? (
-              <div className="h-5 w-16 bg-gray-200 rounded animate-pulse"></div>
-            ) : (
-              siteSettings?.siteTitle?.split(" ")[0] || t("admin")
-            )}
-          </h1>
-        </div>
-      </div>
+      <div className="boed-admin-header-title"><span>STORE WORKSPACE / ADMINISTRATION</span><h1>{workspaceSection}</h1></div>
 
       <div className="flex items-center space-x-3">
         {/* Language selector */}

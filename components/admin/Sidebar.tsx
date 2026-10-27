@@ -26,6 +26,10 @@ import {
   Package,
   Users2,
   DollarSign,
+  Search,
+  X,
+  ArrowLeft,
+  ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -1163,11 +1167,13 @@ const SidebarContent = ({
 
 export default function Sidebar({
   isMobile = false,
+  onClose,
 }: {
   isMobile?: boolean;
   onClose?: () => void;
 }) {
   const pathname = usePathname() ?? "";
+  const [menuSearch, setMenuSearch] = useState("");
   const { data: orderNotifications, acknowledgeOrders } = useOrderNotifications(true);
   const locale = useLocale();
   const messages = useMessages();
@@ -1339,8 +1345,6 @@ export default function Sidebar({
   const themeBg = "bg-background";
   const themeBorder = "border-border";
   const siteTitle = siteSettings?.siteTitle?.trim() || DEFAULT_SITE_TITLE;
-  const headerTitle = userRoleLabel || siteTitle;
-  const adminSubtitle = siteTitle ? `${siteTitle}` : "Admin Panel";
   const sidebarMessages = (
     messages as unknown as Record<string, Record<string, string> | undefined>
   ).AdminSidebar;
@@ -1349,83 +1353,23 @@ export default function Sidebar({
     [sidebarMessages],
   );
 
-  if (isMobile) {
-    return (
-      <div dir={direction} className={cn("h-full w-[86vw] max-w-80 flex flex-col", themeBg)}>
-        {/* Modern Header */}
-        <div className="h-20 flex flex-col items-center justify-center border-b border-border px-4">
-          <div className="text-center">
-            <h2 className={cn("font-bold text-lg text-foreground")}>
-              {headerTitle
-                ? headerTitle.charAt(0).toUpperCase() + headerTitle.slice(1)
-                : ""}
-            </h2>
-            <p className="text-xs text-muted-foreground">{adminSubtitle}</p>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <SidebarContent
-            newOrderCount={orderNotifications?.newOrderCount ?? 0}
-            onOrdersClick={acknowledgeOrders}
-            pathname={pathname}
-            items={visibleMenuItems}
-            compactSubSections
-            translateLabel={translateLabel}
-          />
-        </div>
-      </div>
-    );
-  }
+  const matchingLinks = useMemo(() => {
+    const query = menuSearch.trim().toLocaleLowerCase();
+    if (!query) return [];
+    return visibleMenuItems.flatMap(section => {
+      if (section.name === "Overview" && !permissionKeys.includes("dashboard.read") && !permissionKeys.includes("reports.read")) return [];
+      const links: Array<{ name: string; href: string; icon?: LucideIcon }> = section.items ?? section.subSections?.flatMap(group => group.items) ?? section.subItems ?? (section.href ? [{ name: section.name, href: section.href }] : []);
+      return links.filter(item => (permissionKeys.includes("dashboard.read") || !["/admin", "/admin/analytics"].includes(item.href)) && [item.name, section.name, translateLabel(item.name), translateLabel(section.name)].join(" ").toLocaleLowerCase().includes(query))
+        .map(item => ({ name: item.name, href: item.href, icon: item.icon || section.icon || LayoutDashboard }));
+    });
+  }, [menuSearch, visibleMenuItems, translateLabel, permissionKeys]);
 
-  // Desktop Sidebar
-  return (
-    <aside
-      dir={direction}
-      className={cn(
-        "w-60 shadow-lg h-screen fixed top-0 flex flex-col",
-        isRtl ? "right-0 left-auto border-l" : "left-0 right-auto border-r",
-        themeBg,
-        themeBorder,
-      )}
-    >
-      {/* Premium Brand Header */}
-      <div className="h-[72px] flex items-center justify-center border-b border-border sticky top-0 z-10 bg-background flex-shrink-0">
-        <div className="flex items-center gap-3">
-          {/* Logo Mark */}
-          <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center shadow-sm">
-            <LayoutDashboard className="h-4 w-4 text-white" />
-          </div>
-
-          {/* Brand Identity */}
-          <div className="flex flex-col">
-            <h2 className="font-bold text-lg text-foreground">{siteTitle}</h2>
-            <div className="bg-primary/10 px-2 py-0.5 rounded-full">
-              <p className="text-[10px] font-medium text-primary">
-                {userRoleLabel}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto scrollbar-hide-on-idle">
-        <SidebarContent
-          newOrderCount={orderNotifications?.newOrderCount ?? 0}
-          onOrdersClick={acknowledgeOrders}
-          pathname={pathname}
-          items={visibleMenuItems}
-          isWarehouseScopedOnly={isWarehouseScopedOnly}
-          translateLabel={translateLabel}
-        />
-      </div>
-      {/* Version */}
-      <div className="p-4 border-t border-border/50">
-        <h3 className="text-sm font-semibold text-foreground text-center">
-          {siteTitle}
-        </h3>
-        <p className="text-[10px] text-muted-foreground/40 text-center">
-          V1.1.0
-        </p>
-      </div>
-    </aside>
-  );
+  const brand = <div className="boed-admin-brand"><Link href="/admin" aria-label={siteTitle}><span className="boed-admin-brand-icon" aria-hidden="true">A</span><img src="/AURA_BOED_Logo.svg" alt={siteTitle} width="180" height="65" /></Link>{isMobile ? <button type="button" aria-label="Close admin navigation" onClick={onClose}><X size={18} /></button> : null}</div>;
+  const searchField = <label className="boed-admin-menu-search"><Search size={15} aria-hidden="true" /><input type="search" aria-label="Search admin menu" placeholder="Find a menu..." value={menuSearch} onChange={event => setMenuSearch(event.target.value)} />{menuSearch ? <button type="button" aria-label="Clear menu search" onClick={() => setMenuSearch("")}><X size={13} /></button> : null}</label>;
+  const navigation = <div className="boed-admin-nav" onClick={event => { if ((event.target as HTMLElement).closest("a[href]")) onClose?.(); }}>
+    {menuSearch.trim() ? matchingLinks.length ? <nav className="boed-admin-search-results" aria-label="Admin search results">{matchingLinks.map(item => <Link key={item.href} href={item.href} aria-current={pathname === item.href ? "page" : undefined}><item.icon size={17} /><span>{translateLabel(item.name)}</span></Link>)}</nav> : <p className="boed-admin-search-empty">No menu items found.<br />Try another name.</p> : <SidebarContent newOrderCount={orderNotifications?.newOrderCount ?? 0} onOrdersClick={acknowledgeOrders} pathname={pathname} items={visibleMenuItems} isWarehouseScopedOnly={isWarehouseScopedOnly} compactSubSections={isMobile} translateLabel={translateLabel} />}
+  </div>;
+  const footer = <div className="boed-admin-sidebar-footer"><div className="boed-admin-workspace-status"><ShieldCheck size={19} /><div>Store workspace<small>{userRoleLabel}</small></div></div><Link href="/"><ArrowLeft size={15} />Back to storefront</Link></div>;
+  if (isMobile) return <div dir={direction} className="boed-admin-sidebar h-full flex flex-col">{brand}{searchField}{navigation}{footer}</div>;
+  return <aside dir={direction} className={cn("boed-admin-sidebar h-screen fixed top-0 flex flex-col", isRtl ? "right-0 left-auto border-l" : "left-0 right-auto border-r", themeBg, themeBorder)}>{brand}{searchField}{navigation}{footer}</aside>;
 }
