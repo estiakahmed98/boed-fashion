@@ -3,6 +3,7 @@ import { HomeMotion } from "@/components/ecommarce/fashion/HomeMotion";
 import { ProductCard } from "@/components/ecommarce/fashion/EditorialCard";
 import { Icon } from "@/components/ecommarce/fashion/Icons";
 import { getHomepageProducts } from "@/lib/editorial-home";
+import { getEditorialBannerImages } from "@/lib/editorial-banners";
 
 import { homeImages } from "@/lib/editorial-images";
 
@@ -64,6 +65,7 @@ const categoryTiles = [
       "mosaic-half [&]:[grid-column:span_6] max-[700.01px]:[&]:[grid-column:span_3] max-[700.01px]:[&]:[height:350px]",
   },
 ];
+
 const mediaWordmarkStyles = [
   "media-wordmark-0 [&]:[font-size:15px] [&]:[font-weight:400] [&]:[letter-spacing:0.07em]",
   "media-wordmark-1 ",
@@ -75,7 +77,13 @@ const mediaWordmarkStyles = [
 const media = ["NOBLEMAN", "Forbes", "Esquire", "GQ", "THE RAKE", "VOGUE"];
 
 export default async function Home() {
-  const home = await getHomepageProducts().catch(() => null);
+  const [home, bannerImages] = await Promise.all([
+    getHomepageProducts().catch(() => null),
+    getEditorialBannerImages().catch(error => {
+      console.error("Editorial banner images unavailable:", error);
+      return homeImages;
+    }),
+  ]);
   const featuredProducts = home?.featured ?? [];
   return (
     <HomeMotion>
@@ -86,11 +94,11 @@ export default async function Home() {
         <picture className="contents">
           <source
             media="(max-width: 700px)"
-            srcSet={encodeURI(homeImages.heroMobile)}
+            srcSet={encodeURI(bannerImages.heroMobile)}
           />
           <img
             className="campaign-image absolute inset-[0] w-[100%] h-[100%] object-cover object-[50%_0%] z-[-3] min-[1600px]:object-[50%_0%] max-[700.01px]:object-[50%_0%]"
-            src={homeImages.hero}
+            src={bannerImages.hero}
             alt="Italian tailoring, photographed in natural light"
             fetchPriority="high"
           />
@@ -247,11 +255,11 @@ export default async function Home() {
         <picture className="absolute inset-0 -z-[2] block">
           <source
             media="(max-width: 700px)"
-            srcSet={encodeURI(homeImages.summerMobile)}
+            srcSet={encodeURI(bannerImages.summerMobile)}
           />
           <img
             className="h-full w-full object-cover object-top max-[700.01px]:object-center"
-            src={homeImages.summer}
+            src={bannerImages.summer}
             alt="Relaxed summer dressing in warm natural light"
             loading="lazy"
           />

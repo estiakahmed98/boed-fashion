@@ -81,16 +81,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const categoryData = await getStorefrontCatalogProducts(
     parseCatalogFilters({
       category: product.category.slug,
-      inStock: "1",
       sort: "popular",
       perPage: "12",
     }),
   );
   const recommendations = new Map<number, StorefrontCatalogProduct>();
   const addRecommendations = (products: StorefrontCatalogProduct[]) => {
-    for (const candidate of products) {
+    // Related cards are discovery links, so unavailable catalog items can still
+    // be recommended. Prefer available stock within each relevance group.
+    const ranked = [...products].sort((left, right) => Number(right.stock > 0) - Number(left.stock > 0));
+    for (const candidate of ranked) {
       if (
-        candidate.stock <= 0 ||
         candidate.id === product.id ||
         recommendations.has(candidate.id)
       ) {
@@ -109,7 +110,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
     const brandData = await getStorefrontCatalogProducts(
       parseCatalogFilters({
         brand: product.brand.slug,
-        inStock: "1",
         sort: "popular",
         perPage: "12",
       }),
@@ -118,7 +118,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   }
   if (recommendations.size < 8) {
     const popularData = await getStorefrontCatalogProducts(
-      parseCatalogFilters({ inStock: "1", sort: "popular", perPage: "12" }),
+      parseCatalogFilters({ sort: "popular", perPage: "12" }),
     );
     addRecommendations(popularData.products);
   }
@@ -203,7 +203,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       <ProductDetailTabs productId={product.id} description={product.description || product.shortDesc || ""} descriptionContent={<ServerRichText content={product.description || product.shortDesc || ""} />} attributes={product.attributes} variantOptions={product.variantOptions} specificationGroups={product.specificationGroups} information={productInformation} reviewCount={product.ratingCount} />
       <section className="border-t border-stone-200 py-8"><ProductQuestions productId={product.id} /></section>
     </div>
-    <div className="editorial-recommendations"><h2>You may also like</h2><div className="editorial-grid">{relatedProducts.slice(0, 4).map(item => <EditorialCard key={item.id} product={item} />)}</div></div>
+    {hasRelatedProducts ? <div className="editorial-recommendations"><h2>You may also like</h2><div className="editorial-grid">{relatedProducts.slice(0, 4).map(item => <EditorialCard key={item.id} product={item} />)}</div></div> : null}
   </main>;
 
   return (
