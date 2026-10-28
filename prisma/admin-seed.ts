@@ -2,7 +2,7 @@ import { loadEnvConfig } from "@next/env";
 import { hash } from "bcryptjs";
 import { PrismaClient } from "../generated/prisma";
 
-export async function seedAdmin() {
+export async function seedAdmin({ ifMissing = false } = {}) {
   loadEnvConfig(process.cwd());
   const db = new PrismaClient();
   const passwordHash = await hash(
@@ -12,6 +12,11 @@ export async function seedAdmin() {
   try {
     await db.$transaction(
       async (tx) => {
+        // Deploys bootstrap missing accounts without resetting existing credentials.
+        if (ifMissing && await tx.user.findUnique({ where: { email: "admin@example.com" } })) {
+          console.log("Admin account already exists; credentials left unchanged.");
+          return;
+        }
         const data = {
           name: "Administrator",
           role: "admin",
@@ -48,10 +53,10 @@ export async function seedAdmin() {
           await tx.userRole.create({
             data: { userId: admin.id, roleId: role.id, scopeType: "GLOBAL" },
           });
+        console.log("Admin account seeded: admin@example.com (global superadmin).");
       },
       { maxWait: 10_000, timeout: 30_000 },
     );
-    console.log("Admin account seeded: admin@example.com (global superadmin).");
   } finally {
     await db.$disconnect();
   }

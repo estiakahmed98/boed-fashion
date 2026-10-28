@@ -12,7 +12,9 @@ Homepage campaign images are read from active, currently scheduled Banner Manage
 
 ### Production deployment
 
-`vercel.json` sets the build command to `npx prisma generate && npm run build`, overriding the old dashboard command that ran `prisma db push` and `prisma db seed` on every deploy. Builds no longer change schema, import catalog data, or reset the seeded admin password. Commit this file with the code changes before deploying; redeploying the old commit will still run the old command.
+`vercel.json` sets the build command to `npx prisma generate && npx prisma db seed -- --if-missing && npm run build`. The admin bootstrap creates `admin@example.com` with a global superadmin role only when the account is missing. Existing credentials and account status are preserved on redeploy. Builds do not change schema or import catalog data. Commit and redeploy these changes for the updated command to take effect. The deployment's `DATABASE_URL` must point to the application's database with its schema already installed.
+
+For a newly created admin, the password is the deployment's `SEED_ADMIN_PASSWORD`, or `admin123` if that variable is absent. Set `SEED_ADMIN_PASSWORD` in the intended Vercel environment before deployment to choose a private password. To create or explicitly reset the seeded admin account, run `npx prisma db seed` (without `--if-missing`) against the intended database; changing the environment variable alone does not reset an existing account during deployment.
 
 The reported deployment completed schema sync but failed inside the BOED importer with a closed/invalid Prisma transaction before Next.js started building. Category paths are now cached per import and resolved outside interactive transactions. Product, variant, size-option and warehouse-stock nested writes remain atomic. Categories may remain after a failed product insert; rerunning the importer reuses them and skips completed products. The remaining inventory-repair and admin transactions have explicit 10-second acquisition and 30-second execution limits; database/proxy limits can still end a connection earlier.
 
@@ -32,7 +34,7 @@ Run database setup separately against the intended database when needed. For an 
 The catalog importer uses each product's explicit JSON `stock` for its single default variant. Price/size/source review flags remain metadata and no longer silently force stock to zero. Candidate sizes are not actual variants; products with multiple verified sizes still need per-size quantities. Existing unmodified BOED rows left at zero by the old importer receive a one-time stock repair from JSON, marked by `sourceStockInitialized`. Rows with warehouse stock, inventory logs, order history, multiple variants or previously initialized stock are preserved. Normal repeat runs do not replenish sold or manually adjusted inventory. Unrelated slug/SKU/hierarchy collisions stop the import. Category paths are resolved and cached separately; each new product and its nested variant, option and stock records are inserted atomically.
 
 ```powershell
-npx prisma db seed             # default seed: imports missing BOED products
+npx prisma db seed             # default seed: creates/resets the admin account
 npm run seed:admin             # seeds the requested admin account
 npm run seed:boed -- --export   # validates every asset; exports mapping under .git
 npm run seed:boed -- --apply    # imports missing records and repairs untouched legacy zero-stock rows
@@ -45,4 +47,4 @@ The default seed now creates/updates `admin@example.com` with password `admin123
 
 The catalog mapping and asset checks pass for every row; four focused importer tests pass. Changed application files pass ESLint, and `npm run typecheck` now passes for the full project. `next typegen` succeeds. The footer newsletter form was browser-tested with a mocked API response, so no test subscription was sent. Cart option labels omit internal metadata.
 
-The default `prisma/seed.ts` calls the shared BOED importer, requested admin seed and targeted demo-suit inventory seed. It no longer imports the removed Startech, healthcare or banner modules. `npx prisma db seed` inserted 338 products, and repeat runs skipped the existing catalog. Browser verification confirms the sticky header remains at y=0 after scrolling, the mega-menu images load, the mobile navigation has no horizontal overflow, the requested suit adds to the bag, and the requested admin credentials sign in successfully and open `/admin` with HTTP 200. The reference runs from `Aura_boed` at port 3001; these changes are in this repository, running at port 3000.
+The default `prisma/seed.ts` now calls only the requested admin seed. Catalog imports remain available through `npm run seed:boed -- --apply`. Earlier catalog verification inserted 338 products and repeat imports skipped existing products. Browser verification confirmed the sticky header, mega-menu images, mobile navigation, suit purchase flow, and admin sign-in. The reference runs from `Aura_boed` at port 3001; this repository runs at port 3000.

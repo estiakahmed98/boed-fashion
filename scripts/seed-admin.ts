@@ -1,6 +1,6 @@
 import { seedAdmin } from "../prisma/admin-seed";
 
-seedAdmin().catch(error => {
+seedAdmin({ ifMissing: process.argv.includes("--if-missing") }).catch(error => {
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
 });
