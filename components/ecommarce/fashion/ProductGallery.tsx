@@ -70,6 +70,8 @@ export function ProductGallery({
                 src={image}
                 alt={`${name}, view ${index + 1}`}
                 loading={index === 0 ? "eager" : "lazy"}
+                fetchPriority={index === 0 ? "high" : "auto"}
+                decoding="async"
               />
               <span
                 className="gallery-zoom-icon absolute top-[15px] right-[15px] w-[38px] h-[38px] grid [place-items:center] [background:#ffffffed] [color:#33362e] rounded-[50%] opacity-[0] [transform:translateY(-4px)] [transition:opacity_0.2s,_transform_0.2s] [pointer-events:none] [@media(hover:_none)]:opacity-[1] [@media(hover:_none)]:[transform:none] [@media(hover:_none)]:w-[32px] [@media(hover:_none)]:h-[32px] [@media(hover:_none)]:top-[10px] [@media(hover:_none)]:right-[10px] motion-reduce:[transition:none]"

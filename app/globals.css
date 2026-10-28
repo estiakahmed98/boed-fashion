@@ -2,6 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+.storefront-progress {
+  position: fixed;
+  top: var(--storefront-progress-top, 91px);
+  inset-inline: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 180ms ease;
+}
+.storefront-progress[data-visible="false"] { opacity: 0; visibility: hidden; }
+.storefront-progress [role="progressbar"] { height: 3px; background: #dedbd680; }
+.storefront-progress-fill {
+  height: 100%; width: 100%; background: #626b4b;
+  box-shadow: 0 0 8px #626b4b55;
+  transform-origin: left;
+  transition: transform 180ms linear;
+}
+.storefront-progress-count {
+  position: absolute; right: 14px; top: 7px;
+  padding: 3px 7px; background: #faf9f6; color: #343a2b;
+  border: 1px solid #dedbd6; font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.skeleton-block { background: #e9e7e2; animation: storefront-pulse 1.6s ease-in-out infinite; }
+@keyframes storefront-pulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-block { animation: none; }
+  .storefront-progress, .storefront-progress-fill { transition: none; }
+}
+
 /* PC Builder quotation sheet: hidden on screen, the only thing printed. */
 #pc-builder-quotation {
   display: none;

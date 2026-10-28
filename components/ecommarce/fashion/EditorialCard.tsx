@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark } from "lucide-react";
@@ -46,8 +47,8 @@ export function ProductCard({ product }: { product: EditorialProduct }) {
     <article className="product-card editorial-card">
       <div className="product-media">
         <Link href={href} aria-label={`View ${product.name}`}>
-          <img src={product.image || "/placeholder.svg"} alt={product.name} loading="lazy" />
-          {product.images?.[1] ? <img className="product-hover-image" src={product.images[1]} alt="" loading="lazy" /> : null}
+          <Image src={product.image || "/placeholder.svg"} alt={product.name} fill sizes="(max-width: 700px) 50vw, (max-width: 1100px) 33vw, 25vw" unoptimized={Boolean(product.image && (!product.image.startsWith("/") || product.image.startsWith("//")))} />
+          {product.images?.[1] ? <Image className="product-hover-image" src={product.images[1]} alt="" fill sizes="(max-width: 700px) 50vw, (max-width: 1100px) 33vw, 25vw" unoptimized={!product.images[1].startsWith("/") || product.images[1].startsWith("//")} /> : null}
         </Link>
         <button type="button" className="favorite-button" disabled={saving || status === "loading"} aria-label={liked ? "Remove from wishlist" : "Save to wishlist"} aria-pressed={liked} onClick={() => void toggleWishlist()}>
           <Bookmark size={18} fill={liked ? "currentColor" : "none"} />

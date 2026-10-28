@@ -1,3 +1,4 @@
+import { revalidatePublicBlogs } from "@/lib/storefront-blogs";
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -152,6 +153,8 @@ export async function POST(request: NextRequest) {
         ads: ads ?? null,
       }
     });
+
+    revalidatePublicBlogs();
 
     await logActivity({
       action: "create",

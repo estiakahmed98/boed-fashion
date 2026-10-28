@@ -1069,7 +1069,7 @@ const readCatalogProductCount = compressedCache(
   { revalidate: 30, tags: ["storefront-catalog", "products", "categories"] },
 );
 
-const readCatalog = async (
+const readCatalog = compressedCache(async (
   serializedFilters: string,
   serializedDisabledTypes: string,
   serializedBookVisibility: string,
@@ -1375,7 +1375,10 @@ const readCatalog = async (
         totalPages: Math.max(1, Math.ceil(total / filters.perPage)),
       },
     };
-  };
+  },
+  ["storefront-catalog-results-v1"],
+  { revalidate: 30, tags: ["storefront-catalog", "products", "categories", "flash-sales", "store-features"] },
+);
 
 export type CatalogAttributeFacet = Awaited<
   ReturnType<typeof readCatalogAttributeFacets>

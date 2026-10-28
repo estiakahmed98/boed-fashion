@@ -12,9 +12,11 @@ Homepage campaign images are read from active, currently scheduled Banner Manage
 
 ### Production deployment
 
-`vercel.json` sets the build command to `npx prisma generate && npx prisma db seed -- --if-missing && npm run build`. The admin bootstrap creates `admin@example.com` with a global superadmin role only when the account is missing. Existing credentials and account status are preserved on redeploy. Builds do not change schema or import catalog data. Commit and redeploy these changes for the updated command to take effect. The deployment's `DATABASE_URL` must point to the application's database with its schema already installed.
+`vercel.json` sets the build command to `npx prisma generate && npx prisma db seed && npm run build`. The default Prisma seed creates or repairs both `admin@example.com` and `admin@gmail.com` with password `admin123`, clears bans, verifies email, and assigns the global superadmin role. Every default seed/deployment resets these two accounts to the requested credentials, including existing accounts. `SEED_ADMIN_PASSWORD` does not override this explicitly requested password. No catalog data or schema is changed.
 
-For a newly created admin, the password is the deployment's `SEED_ADMIN_PASSWORD`, or `admin123` if that variable is absent. Set `SEED_ADMIN_PASSWORD` in the intended Vercel environment before deployment to choose a private password. To create or explicitly reset the seeded admin account, run `npx prisma db seed` (without `--if-missing`) against the intended database; changing the environment variable alone does not reset an existing account during deployment.
+Vercel must have `DATABASE_URL` configured in the intended deployment environment; a Vercel seed fails if it is missing rather than using a local env fallback. The seed logs only the hostname/database/schema (never the URL credentials), explicitly passes that URL to Prisma, and reads back both accounts after commit to verify their password hashes and global roles. A failure stops the build. Authentication also uses `DATABASE_URL`; Production and Preview values must refer to the intended databases. The schema must already be installed.
+
+Commit/push and redeploy these changes before expecting the current production deployment to change. A dashboard warning about production overrides means the current deployment was built with different settings; saving project settings alone does not rebuild it. The optional `npx prisma db seed -- --if-missing` preserves existing accounts and is no longer used by the Vercel build.
 
 The reported deployment completed schema sync but failed inside the BOED importer with a closed/invalid Prisma transaction before Next.js started building. Category paths are now cached per import and resolved outside interactive transactions. Product, variant, size-option and warehouse-stock nested writes remain atomic. Categories may remain after a failed product insert; rerunning the importer reuses them and skips completed products. The remaining inventory-repair and admin transactions have explicit 10-second acquisition and 30-second execution limits; database/proxy limits can still end a connection earlier.
 
@@ -41,7 +43,7 @@ npm run seed:boed -- --apply    # imports missing records and repairs untouched 
 npm run test:boed
 ```
 
-The default seed now creates/updates `admin@example.com` with password `admin123` (or `SEED_ADMIN_PASSWORD` when supplied) and a global superadmin role, as explicitly requested. Re-running this account seed resets that account's password. No database reset, deletion, schema migration or settings replacement is performed. Restart the dev server after CLI import to clear cached catalog data. In production use the existing catalog revalidation/admin workflow.
+The default seed creates/updates `admin@example.com` and `admin@gmail.com` with password `admin123` and global superadmin roles. Re-running it resets both accounts to these requested credentials. No database reset, deletion, schema migration or settings replacement is performed.
 
 ## Verification in this checkout
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Form from "next/form";
 import { useState } from "react";
 import { Bookmark, ChevronDown, LogOut, Menu, Search, ShoppingBag, UserRound, X, ArrowRight } from "lucide-react";
 import { useCart } from "@/components/ecommarce/CartContext";
@@ -94,7 +95,7 @@ export function EditorialHeader({ highlights, onOpenBag }: { highlights: MenuPro
       </div>
     </header>
     <button type="button" className="editorial-menu-shade" data-open={Boolean(activeMenu)} tabIndex={activeMenu ? 0 : -1} aria-hidden={!activeMenu} aria-label="Close menu" onClick={close} />
-    {searchOpen ? <form action="/ecommerce/products" className="editorial-search" onSubmit={close}><label htmlFor="editorial-search">Find your next favourite</label><div><input autoFocus id="editorial-search" name="q" type="search" placeholder="Search the collection…" required /><button type="submit">Search <Search size={16} /></button><button type="button" aria-label="Close search" onClick={close}><X size={18} /></button></div></form> : null}
+    {searchOpen ? <Form action="/ecommerce/products" className="editorial-search" onSubmit={close}><label htmlFor="editorial-search">Find your next favourite</label><div><input autoFocus id="editorial-search" name="q" type="search" placeholder="Search the collection…" required /><button type="submit">Search <Search size={16} /></button><button type="button" aria-label="Close search" onClick={close}><X size={18} /></button></div></Form> : null}
     {mobileOpen ? <nav className="editorial-mobile-nav" aria-label="Mobile navigation"><Link href="/ecommerce/products?sort=newest" onClick={close}>New Arrivals</Link>{(Object.keys(menus) as MenuName[]).map(name => <Link key={name} href={menus[name].href} onClick={close}>{name}</Link>)}{["Suits", "Jackets", "Shirts", "Trousers", "Knitwear"].map(label => <Link key={label} href={collection(label.toLowerCase())} onClick={close}>{label}</Link>)}<Link href="/#our-story" onClick={close}>Our Story</Link></nav> : null}
   </div>;
 }

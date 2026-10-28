@@ -357,7 +357,7 @@ export function CustomerOrdersPage({ refundedOnly = false }: { refundedOnly?: bo
         </div>
 
         {loading ? (
-          <OrdersPageSkeleton />
+          <div data-storefront-loading="route" role="status" aria-label="Loading orders"><OrdersPageSkeleton /></div>
         ) : error ? (
           <Card className="border-rose-200 bg-rose-50 p-6 text-rose-900 shadow-sm dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100">
             <p className="text-sm font-medium">{error}</p>

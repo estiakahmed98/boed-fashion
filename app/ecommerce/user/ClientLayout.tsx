@@ -8,7 +8,7 @@ import { getDashboardRoute } from "@/lib/dashboard-route";
 
 function LayoutSkeleton() {
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-gradient-to-b from-background via-background to-muted/25">
+    <div data-storefront-loading="route" role="status" aria-label="Loading account" className="min-h-[calc(100vh-80px)] bg-gradient-to-b from-background via-background to-muted/25">
       <div className="mx-auto flex min-h-[calc(100vh-80px)] max-w-6xl items-center justify-center px-6 py-10">
         <div className="w-full max-w-2xl space-y-5 rounded-3xl border border-border/70 bg-card/90 p-6 shadow-sm">
           <div className="flex items-center gap-4">

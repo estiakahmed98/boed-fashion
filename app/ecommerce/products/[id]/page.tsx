@@ -1,5 +1,4 @@
 import { EditorialPurchase } from "@/components/ecommarce/fashion/EditorialPurchase";
-import { ProductCard as EditorialCard } from "@/components/ecommarce/fashion/EditorialCard";
 import { CrossCategoryTopSellers } from "@/components/ecommarce/fashion/CrossCategoryTopSellers";
 import ServerRichText from "@/components/ecommarce/product-detail/ServerRichText";
 import { cache, Suspense } from "react";
@@ -9,13 +8,8 @@ import { notFound, permanentRedirect } from "next/navigation";
 import CatalogProductGrid from "@/components/ecommarce/catalog/CatalogProductGrid";
 import ProductDetailTabs from "@/components/ecommarce/product-detail/ProductDetailTabs";
 import ProductPurchasePanel from "@/components/ecommarce/product-detail/ProductPurchasePanel";
-import ProductQuestions from "@/components/ecommarce/product-detail/ProductQuestions";
+import ProductQuestions from "@/components/ecommarce/product-detail/DeferredProductQuestions";
 import RelatedProductRail from "@/components/ecommarce/product-detail/RelatedProductRail";
-import {
-  getStorefrontCatalogProducts,
-  parseCatalogFilters,
-} from "@/lib/storefront-catalog";
-import type { StorefrontCatalogProduct } from "@/lib/storefront-catalog";
 import {
   getProductAvailableStock,
   toProductPurchaseData,
@@ -30,6 +24,9 @@ import {
   serializeJsonLd,
 } from "@/lib/seo";
 import { getTranslations } from "next-intl/server";
+import { getProductRecommendations } from "@/lib/storefront-recommendations";
+import EditorialRelatedProducts from "@/components/ecommarce/fashion/EditorialRelatedProducts";
+import { LoadingSurface, ProductGridSkeleton } from "@/components/ecommarce/StorefrontSkeleton";
 
 type ProductPageProps = { params: Promise<{ id: string }> };
 const getProduct = cache(getStorefrontProductDetail);
@@ -79,52 +76,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     permanentRedirect(productHref);
   }
 
-  const categoryData = await getStorefrontCatalogProducts(
-    parseCatalogFilters({
-      category: product.category.slug,
-      sort: "popular",
-      perPage: "12",
-    }),
-  );
-  const recommendations = new Map<number, StorefrontCatalogProduct>();
-  const addRecommendations = (products: StorefrontCatalogProduct[]) => {
-    // Related cards are discovery links, so unavailable catalog items can still
-    // be recommended. Prefer available stock within each relevance group.
-    const ranked = [...products].sort((left, right) => Number(right.stock > 0) - Number(left.stock > 0));
-    for (const candidate of ranked) {
-      if (
-        candidate.id === product.id ||
-        recommendations.has(candidate.id)
-      ) {
-        continue;
-      }
-      recommendations.set(candidate.id, candidate);
-      if (recommendations.size === 8) break;
-    }
-  };
-
-  addRecommendations(categoryData.products);
-
-  // A sparse category must not leave the desktop page with an empty rail.
-  // Prefer the same brand, then fill the remaining slots with popular items.
-  if (recommendations.size < 8 && product.brand) {
-    const brandData = await getStorefrontCatalogProducts(
-      parseCatalogFilters({
-        brand: product.brand.slug,
-        sort: "popular",
-        perPage: "12",
-      }),
-    );
-    addRecommendations(brandData.products);
-  }
-  if (recommendations.size < 8) {
-    const popularData = await getStorefrontCatalogProducts(
-      parseCatalogFilters({ sort: "popular", perPage: "12" }),
-    );
-    addRecommendations(popularData.products);
-  }
-
-  const relatedProducts = [...recommendations.values()].slice(0, 8);
+  const relatedProducts = product.type === "PHYSICAL" ? [] : await getProductRecommendations(product);
   const hasRelatedProducts = relatedProducts.length > 0;
   const plainTextDescription = stripHtml(product.description);
   const dimensions =
@@ -204,7 +156,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       <ProductDetailTabs productId={product.id} description={product.description || product.shortDesc || ""} descriptionContent={<ServerRichText content={product.description || product.shortDesc || ""} />} attributes={product.attributes} variantOptions={product.variantOptions} specificationGroups={product.specificationGroups} information={productInformation} reviewCount={product.ratingCount} />
       <section className="border-t border-stone-200 py-8"><ProductQuestions productId={product.id} /></section>
     </div>
-    {hasRelatedProducts ? <section className="editorial-recommendations" aria-labelledby="related-products-title"><h2 id="related-products-title">Related products</h2><div className="editorial-grid">{relatedProducts.slice(0, 4).map(item => <EditorialCard key={item.id} product={item} />)}</div></section> : null}
+    <Suspense fallback={<LoadingSurface trackProgress={false}><div className="editorial-recommendations"><ProductGridSkeleton count={4} /></div></LoadingSurface>}><EditorialRelatedProducts product={product} /></Suspense>
     <Suspense fallback={null}><CrossCategoryTopSellers productId={product.id} categoryId={product.category.id} /></Suspense>
   </main>;
 
@@ -254,8 +206,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 brandName: product.brand?.name,
                 categoryName: product.category.name,
                 shortDescription: product.shortDesc,
-                contactNumber: categoryData.facets.siteSettings.contactNumber,
-                contactEmail: categoryData.facets.siteSettings.contactEmail,
+                contactNumber: settings.contactNumber,
+                contactEmail: settings.contactEmail,
                 attributes: product.attributes,
               }}
             />

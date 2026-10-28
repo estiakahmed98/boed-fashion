@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { HomeMotion } from "@/components/ecommarce/fashion/HomeMotion";
-import { ProductCard } from "@/components/ecommarce/fashion/EditorialCard";
+import { Suspense } from "react";
+import HomeFeaturedProducts from "./HomeFeaturedProducts";
 import { Icon } from "@/components/ecommarce/fashion/Icons";
-import { getHomepageProducts } from "@/lib/editorial-home";
 import { getEditorialBannerImages } from "@/lib/editorial-banners";
 
 import { homeImages } from "@/lib/editorial-images";
@@ -77,14 +77,10 @@ const mediaWordmarkStyles = [
 const media = ["NOBLEMAN", "Forbes", "Esquire", "GQ", "THE RAKE", "VOGUE"];
 
 export default async function Home() {
-  const [home, bannerImages] = await Promise.all([
-    getHomepageProducts().catch(() => null),
-    getEditorialBannerImages().catch(error => {
+  const bannerImages = await getEditorialBannerImages().catch(error => {
       console.error("Editorial banner images unavailable:", error);
       return homeImages;
-    }),
-  ]);
-  const featuredProducts = home?.featured ?? [];
+    });
   return (
     <HomeMotion>
       <section
@@ -162,11 +158,9 @@ export default async function Home() {
           </div>
         </div>
         <div className="tailoring-products grid grid-cols-[repeat(2,_minmax(0,_1fr))] gap-[0_var(--editorial-gap)] [&_.product-media]:[aspect-ratio:2_/_3] [&_.product-media_img]:object-[center_top] [&_.product-meta]:p-[17px_12px_24px] [&_.product-meta]:min-h-[100px] [&_.product-color]:hidden [&_.product-name]:[font-size:11px] [&_.product-name]:[font-weight:var(--font-weight-normal,_400)] [&_.product-price]:[font-size:10px] [&_.product-price]:mt-[10px] [&_.product-badge]:hidden max-[700.01px]:[&_.product-meta]:min-h-[110px] max-[700.01px]:[&_.product-meta]:p-[14px_10px_22px] max-[700.01px]:[&_.product-name]:[font-size:10px]">
-          {!home ? <p role="status" className="col-span-2 p-10 text-center text-stone-500">The collection is temporarily unavailable. Please try again shortly.</p> : null}
-          {featuredProducts.map(
-            (product) =>
-              product && <ProductCard key={product.id} product={product} />,
-          )}
+          <Suspense fallback={<div data-storefront-loading="deferred" role="status" aria-label="Loading featured products" className="col-span-2 grid grid-cols-2 gap-2">{[1, 2, 3, 4].map(index => <div key={index} className="skeleton-block aspect-[2/3]" />)}</div>}>
+            <HomeFeaturedProducts />
+          </Suspense>
         </div>
       </section>
 

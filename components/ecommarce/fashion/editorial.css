@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap");
-
 .editorial-store {
   --ink: #232321;
   --muted: #787775;
@@ -7,8 +5,8 @@
   --off: #f5f4f2;
   --cream: #e9e6e0;
   --accent: #ad2826;
-  --serif: "Cormorant Garamond", Georgia, serif;
-  --sans: "DM Sans", Arial, sans-serif;
+  --serif: var(--font-editorial-serif), Georgia, serif;
+  --sans: var(--font-editorial-sans), Arial, sans-serif;
   --background: 0 0% 100%;
   --foreground: 60 3% 14%;
   --card: 0 0% 100%;
@@ -870,10 +868,29 @@
 }
 .editorial-pagination {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
-  gap: 30px;
+  gap: 6px;
   margin-top: 40px;
 }
+.editorial-pagination a,
+.editorial-pagination > span {
+  min-width: 36px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.editorial-pagination a:hover { background: var(--off); }
+.editorial-pagination a[aria-current="page"] { background: var(--ink); color: white; border-color: var(--ink); }
+.editorial-pagination a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.editorial-pagination [aria-disabled="true"] { opacity: .4; }
+.editorial-pagination .editorial-pagination-gap { border-color: transparent; min-width: 20px; padding-inline: 2px; }
 .editorial-empty {
   padding: 100px 20px;
   text-align: center;

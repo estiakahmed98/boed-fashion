@@ -24,9 +24,10 @@ import TreeProvider from "@/providers/treeProvider";
 import { CartProvider } from "@/components/ecommarce/CartContext";
 import { WishlistProvider } from "@/components/ecommarce/WishlistContext";
 import { Providers } from "./providers";
-import SupportChatWidget from "@/components/chat/SupportChatWidget";
+import SupportChatWidget from "@/components/chat/LazySupportChatWidget";
 import AnalyticsTracker from "@/components/AnalyticsTracker";
 import ScrollToTopButton from "@/components/ecommarce/ScrollToTopButton";
+import StorefrontProgress from "@/components/ecommarce/StorefrontProgress";
 import {
   buildDefaultMetadata,
   getSiteUrl,
@@ -190,6 +191,7 @@ export default async function RootLayout({
             }}
           >
             <AnalyticsTracker />
+            <Suspense fallback={null}><StorefrontProgress /></Suspense>
             <Suspense fallback={null}><GooglePageViewTracker /></Suspense>
             <TreeProvider>
               <CartProvider>

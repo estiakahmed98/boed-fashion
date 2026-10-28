@@ -1,6 +1,7 @@
+import { LoadingSurface } from "@/components/ecommarce/StorefrontSkeleton";
 export default function PcBuilderLoading() {
   return (
-    <main className="min-h-screen animate-pulse bg-muted/20">
+    <LoadingSurface><main className="min-h-screen animate-pulse bg-muted/20">
       <div className="border-b bg-card">
         <div className="container px-4 py-14 sm:px-6">
           <div className="h-4 w-36 rounded bg-muted" />
@@ -16,6 +17,6 @@ export default function PcBuilderLoading() {
         </div>
         <div className="h-96 rounded-2xl border bg-card" />
       </div>
-    </main>
+    </main></LoadingSurface>
   );
 }

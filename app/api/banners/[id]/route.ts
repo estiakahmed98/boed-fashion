@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 // app/api/banners/[id]/route.ts
 
 import { prisma } from "@/lib/prisma";
@@ -117,6 +118,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       },
     });
 
+    revalidateTag("editorial-banners", { expire: 0 });
+
     await logActivity({
       action: "update_banner",
       entity: "banner",
@@ -168,6 +171,8 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const banner = await prisma.banner.delete({
       where: { id },
     });
+
+    revalidateTag("editorial-banners", { expire: 0 });
 
     await logActivity({
       action: "delete_banner",

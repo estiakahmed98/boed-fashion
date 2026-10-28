@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 // app/api/banners/route.ts
 
 import { prisma } from "@/lib/prisma";
@@ -121,6 +122,8 @@ export async function POST(req: Request) {
         type: body.type || "HERO",
       },
     });
+
+    revalidateTag("editorial-banners", { expire: 0 });
 
     await logActivity({
       action: "create_banner",

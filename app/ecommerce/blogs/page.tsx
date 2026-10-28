@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { getPublicBlogIndex } from "@/lib/storefront-blogs";
 import { serializeJsonLd } from "@/lib/seo";
 import type { Metadata } from "next";
 import AllBlogs from "@/components/admin/blog/AllBlogs";
@@ -36,11 +36,7 @@ export default async function BlogsPage() {
     Promise.resolve(getSiteUrl()),
   ]);
 
-  const [blogs, count] = await Promise.all([
-    prisma.blog.findMany({ take: 10, orderBy: { createdAt: "desc" }, select: { id: true, slug: true, title: true, summary: true, author: true, date: true, image: true, createdAt: true, updatedAt: true } }),
-    prisma.blog.count(),
-  ]);
-  const initialBlogs = blogs.map((blog) => ({ ...blog, date: blog.date.toISOString(), createdAt: blog.createdAt.toISOString(), updatedAt: blog.updatedAt.toISOString() }));
+  const { blogs: initialBlogs, count } = await getPublicBlogIndex();
   const blogJsonLd = {
     "@context": "https://schema.org",
     "@type": "Blog",

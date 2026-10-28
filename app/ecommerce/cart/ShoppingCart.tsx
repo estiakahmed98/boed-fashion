@@ -698,7 +698,7 @@ export default function CartPage() {
         />
 
         {showAuthSkeleton ? (
-          <CartSkeleton />
+          <div data-storefront-loading="route" role="status" aria-label="Loading shopping bag"><CartSkeleton /></div>
         ) : showAuthError ? (
           <div className="rounded-xl border border-border bg-card p-10 text-center shadow-sm">
             <h2 className="text-lg font-semibold mb-2">

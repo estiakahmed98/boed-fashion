@@ -1,9 +1,13 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import ProductReviews from "@/components/ecommarce/ProductReviews";
+import dynamic from "next/dynamic";
 import ProductRichText from "@/components/ecommarce/product-detail/ProductRichText";
 import { useTranslations } from "next-intl";
+
+const ProductReviews = dynamic(() => import("@/components/ecommarce/ProductReviews"), {
+  loading: () => <div role="status" aria-label="Loading reviews" className="skeleton-block h-48" />,
+});
 
 type ProductAttribute = {
   id: number;

@@ -1,5 +1,1 @@
-const Loading = () => {
-  return null;
-};
-
-export default Loading;
+export { ContentSkeleton as default } from "@/components/ecommarce/StorefrontSkeleton";

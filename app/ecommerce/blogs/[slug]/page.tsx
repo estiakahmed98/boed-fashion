@@ -2,18 +2,11 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import BlogDetails from "@/components/admin/blog/BlogDetails";
-import { prisma } from "@/lib/prisma";
+import { getPublicBlog as getBlog } from "@/lib/storefront-blogs";
 import { sanitizeStorefrontHtml } from "@/lib/storefront-html";
 import { getSiteSettingsForSeo, getSiteUrl, stripHtml, truncateText, toAbsoluteUrl, serializeJsonLd } from "@/lib/seo";
 
 type Props = { params: Promise<{ slug: string }> };
-// Blog currently has no soft-delete/publish flags; deleted records are absent.
-const getBlog = cache(async (slug: string) => {
-  const bySlug = await prisma.blog.findUnique({ where: { slug } });
-  if (bySlug) return bySlug;
-  const id = /^\d+$/.test(slug) ? Number(slug) : NaN;
-  return Number.isSafeInteger(id) && id > 0 ? prisma.blog.findUnique({ where: { id } }) : null;
-});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const blog = await getBlog((await params).slug);

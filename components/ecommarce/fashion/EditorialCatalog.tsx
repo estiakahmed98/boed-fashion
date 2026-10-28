@@ -2,6 +2,8 @@ import Link from "next/link";
 import { catalogUrl, type StorefrontCatalogData } from "@/lib/storefront-catalog";
 import { ProductCard } from "./EditorialCard";
 import { CatalogFilterClose, CatalogFilterDrawer } from "./CatalogFilterDrawer";
+import { storefrontPaginationItems } from "@/lib/storefront-pagination";
+import Form from "next/form";
 
 export function EditorialCatalog({ data }: { data: StorefrontCatalogData }) {
   const { products, filters, facets, pagination } = data;
@@ -13,7 +15,7 @@ export function EditorialCatalog({ data }: { data: StorefrontCatalogData }) {
     </div>
     <div className="editorial-catalog-body">
       <CatalogFilterDrawer>
-      <form action="/ecommerce/products" className="editorial-filters">
+      <Form action="/ecommerce/products" className="editorial-filters">
         <label>SEARCH<input name="q" type="search" defaultValue={filters.q} placeholder="Search pieces" /></label>
         <label>COLLECTION<select name="category" defaultValue={filters.category}><option value="">All collections</option>{facets.categories.filter(category => category.productCount > 0).map(category => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></label>
         {facets.brands.length ? <label>BRANDS<select name="brand" multiple defaultValue={filters.brands}>{facets.brands.map(brand => <option key={brand.id} value={brand.slug}>{brand.name}</option>)}</select></label> : null}
@@ -27,11 +29,17 @@ export function EditorialCatalog({ data }: { data: StorefrontCatalogData }) {
         <label><span><input type="checkbox" name="inStock" value="1" defaultChecked={filters.inStock} /> In stock only</span></label>
         <label><span><input type="checkbox" name="featured" value="1" defaultChecked={filters.featured} /> Featured pieces</span></label>
         <div className="editorial-filter-actions"><button type="submit">APPLY FILTERS</button><CatalogFilterClose asChild><Link href="/ecommerce/products">Clear filters</Link></CatalogFilterClose></div>
-      </form>
+      </Form>
       </CatalogFilterDrawer>
       <div><div className="editorial-results-bar"><span>{pagination.total} pieces</span><span>Page {pagination.page} of {pagination.totalPages}</span></div>
         {products.length ? <div className="editorial-grid">{products.map(product => <ProductCard key={product.id} product={product} />)}</div> : <div className="editorial-empty"><h2>No pieces found.</h2><p>Try another collection or adjust your filters.</p></div>}
-        <nav className="editorial-pagination" aria-label="Pagination">{pagination.page > 1 ? <Link href={catalogUrl(filters, { page: pagination.page - 1 })}>← Previous</Link> : null}{pagination.page < pagination.totalPages ? <Link href={catalogUrl(filters, { page: pagination.page + 1 })}>Next →</Link> : null}</nav>
+        {pagination.totalPages > 1 ? <nav className="editorial-pagination" aria-label="Pagination">
+          {pagination.page > 1 ? <Link rel="prev" href={catalogUrl(filters, { page: pagination.page - 1 })}>← Previous</Link> : <span aria-disabled="true">← Previous</span>}
+          {storefrontPaginationItems(pagination.page, pagination.totalPages).map(item => typeof item === "number"
+            ? <Link key={item} href={catalogUrl(filters, { page: item })} aria-label={`Page ${item}`} aria-current={item === pagination.page ? "page" : undefined}>{item}</Link>
+            : <span key={item} className="editorial-pagination-gap" aria-hidden="true">…</span>)}
+          {pagination.page < pagination.totalPages ? <><Link rel="next" href={catalogUrl(filters, { page: pagination.page + 1 })}>Next →</Link><Link href={catalogUrl(filters, { page: pagination.totalPages })} aria-label={`Last page, page ${pagination.totalPages}`}>Last</Link></> : <><span aria-disabled="true">Next →</span><span aria-disabled="true">Last</span></>}
+        </nav> : null}
       </div>
     </div>
   </main>;

@@ -1,3 +1,4 @@
+import { compressedCache } from "@/lib/compressed-cache";
 import type { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { getEffectiveStorefrontCategoryIds } from "@/lib/category-navigation-server";
@@ -5,7 +6,7 @@ import { getDisabledStorefrontProductTypes } from "@/lib/store-feature-gates-ser
 import { getBookProductVisibilityWhere } from "@/lib/book-product-visibility-server";
 import { resolveFlashSalePricing } from "@/lib/flash-sale";
 
-export async function getCategoryTopSellers(productId: number, categoryId: number) {
+export const getCategoryTopSellers = compressedCache(async (productId: number, categoryId: number) => {
   const [categoryIds, disabledTypes, bookVisibility] = await Promise.all([
     getEffectiveStorefrontCategoryIds(),
     getDisabledStorefrontProductTypes(),
@@ -49,4 +50,4 @@ export async function getCategoryTopSellers(productId: number, categoryId: numbe
       originalPrice: pricing.active ? pricing.regularPrice : product.originalPrice === null ? null : Number(product.originalPrice),
     }];
   });
-}
+}, ["storefront-category-top-sellers-v1"], { revalidate: 30, tags: ["storefront-catalog", "products", "categories", "flash-sales", "store-features"] });

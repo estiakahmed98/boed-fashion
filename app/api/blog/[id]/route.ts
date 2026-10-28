@@ -1,3 +1,4 @@
+import { revalidatePublicBlogs } from "@/lib/storefront-blogs";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -156,6 +157,8 @@ export async function PUT(
       data: updateData,
     });
 
+    revalidatePublicBlogs();
+
     await logActivity({
       action: "update",
       entity: "blog",
@@ -207,6 +210,8 @@ export async function DELETE(
     }
 
     await prisma.blog.delete({ where: { id: blogId } });
+
+    revalidatePublicBlogs();
 
     await logActivity({
       action: "delete",

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { unstable_cache } from "next/cache";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import {
   resolveSiteSettings,
@@ -102,9 +103,9 @@ const loadSiteSettingsForSeo = unstable_cache(async (): Promise<SiteSettingsSeo>
   }
 }, ["site-settings-seo"], { revalidate: 3600, tags: ["site-settings"] });
 
-export async function getSiteSettingsForSeo(): Promise<SiteSettingsSeo> {
+export const getSiteSettingsForSeo = cache(async (): Promise<SiteSettingsSeo> => {
   return loadSiteSettingsForSeo();
-}
+});
 
 export async function buildDefaultMetadata(): Promise<Metadata> {
   const siteUrl = getSiteUrl();

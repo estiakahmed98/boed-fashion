@@ -13,7 +13,7 @@ export type StoreType = (typeof STORE_TYPES)[number];
 export type CurrencyPosition = (typeof CURRENCY_POSITIONS)[number];
 
 export const SITE_SETTINGS_DEFAULTS = {
-  storeName: "Desi Plus",
+  storeName: "Boed E-commerce",
   storeTagline: "Quality products, secure shopping and dependable service.",
   defaultSeoDescription:
     "Discover quality products with clear information, secure checkout and dependable delivery.",
@@ -282,7 +282,7 @@ export function resolveSiteSettings(
   const derivedKeywords = parseKeywords([
     storeName,
     ...catalogKeywords,
-    "Desi Plus",
+    "Boed E-commerce",
     "ecommerce",
     "online shopping",
     "secure checkout",

@@ -329,7 +329,7 @@ export default function WishlistPage() {
         </div>
 
         {/* Grid skeleton */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <div data-storefront-loading="route" role="status" aria-label="Loading wishlist" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {Array.from({ length: 8 }).map((_, i) => (
             <WishlistCardSkeleton key={i} />
           ))}
@@ -381,7 +381,7 @@ export default function WishlistPage() {
         {loading ? (
           <>
             {/* ✅ Skeleton grid loader */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            <div data-storefront-loading="route" role="status" aria-label="Loading wishlist" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
               {Array.from({ length: 8 }).map((_, i) => (
                 <WishlistCardSkeleton key={i} />
               ))}

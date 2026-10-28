@@ -1125,7 +1125,7 @@ export default function CheckoutPage() {
     (isAuthenticated && !cartAuthRequired && (loadingServerCart || !cartSynced))
   ) {
     return (
-      <div className="min-h-screen bg-background py-6 sm:py-8 lg:py-12">
+      <div data-storefront-loading="route" role="status" aria-label="Loading checkout" className="min-h-screen bg-background py-6 sm:py-8 lg:py-12">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto grid lg:grid-cols-3 gap-6 lg:gap-8 animate-pulse">
             <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6 space-y-4">
