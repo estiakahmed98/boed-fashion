@@ -61,7 +61,7 @@ const SigninForm = () => {
       });
       toast.dismiss(dismiss);
 
-      if (res?.ok) {
+      if (res?.ok && !res.error) {
         toast.success("Login successful");
 
         // Checkout continuity has the highest priority after authentication.
@@ -102,8 +102,9 @@ const SigninForm = () => {
       }
 
       const message =
-        res?.error ||
-        "Invalid credentials. Please check your email and password.";
+        res?.error === "CredentialsSignin"
+          ? "Invalid email or password. Please try again."
+          : "Unable to sign in. Please try again in a moment.";
       setFormError(message);
       toast.error(message);
     } catch (err: unknown) {

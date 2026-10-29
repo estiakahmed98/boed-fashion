@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
   compress: true,
   // Allow cross-origin requests from specific development origins
   allowedDevOrigins: [
+    '*.trycloudflare.com',
     '192.168.0.114',
     'crawling-gauging-supernova.ngrok-free.dev',
   ],
