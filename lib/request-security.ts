@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { Redis } from "@upstash/redis";
+import { rateLimitDatabase } from "./database-rate-limit";
 
 type RateLimitBucket = {
   count: number;
@@ -27,6 +28,7 @@ export function getClientIp(request: Request) {
 }
 
 let redis: Redis | null = null;
+let warnedAboutMemoryFallback = false;
 
 function getRedis() {
   const url =
@@ -35,9 +37,9 @@ function getRedis() {
     process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
   if (!url || !token) {
-    if (process.env.NODE_ENV === "production") {
+    if (url || token) {
       throw new Error(
-        "Distributed rate limiting is not configured. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.",
+        "Redis rate limiting has incomplete credentials. Set both the REST URL and token, or remove both to use the existing PostgreSQL database.",
       );
     }
     return null;
@@ -75,6 +77,18 @@ export async function rateLimitRequest(
       remaining: allowed ? Math.max(0, options.limit - count) : 0,
       retryAfter: allowed ? 0 : Math.max(1, Math.ceil((resetAt - now) / 1000)),
     };
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    if (process.env.RATE_LIMIT_ALLOW_IN_MEMORY !== "true") {
+      return rateLimitDatabase(key, options);
+    }
+    if (!warnedAboutMemoryFallback) {
+      console.warn(
+        "Rate limiting is using process memory (RATE_LIMIT_ALLOW_IN_MEMORY=true). Limits reset on restart and are not shared between server instances.",
+      );
+      warnedAboutMemoryFallback = true;
+    }
   }
 
   const current = store.get(key);

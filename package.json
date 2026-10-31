@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "cross-env NODE_OPTIONS=--max-old-space-size=6144 tsc --noEmit",
+    "test:request-security": "node --import tsx --test tests/request-security.test.mjs",
+    "test:request-security-db": "cross-env RUN_DATABASE_RATE_LIMIT_TESTS=true node --import tsx --test tests/database-rate-limit.integration.test.mjs",
     "test:phase0": "tsx --test tests/phase0-security.test.mjs",
     "seed:healthcare": "tsx prisma/HealthCare/seed.ts",
     "test:phase1": "tsx --test tests/phase1-storefront.test.mjs",
